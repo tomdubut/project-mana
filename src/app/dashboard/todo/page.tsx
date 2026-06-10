@@ -46,8 +46,13 @@ export default function TodoPage() {
     setScoreError('')
     try {
       const res = await fetch('/api/internal/score', { method: 'POST' })
-      const json = await res.json()
-      if (!res.ok) setScoreError(json.error ?? `Error ${res.status}`)
+      const text = await res.text()
+      if (!res.ok || !text) {
+        let msg = `HTTP ${res.status} — ${res.url}`
+        try { msg = JSON.parse(text).error ?? msg } catch {}
+        setScoreError(msg)
+        return
+      }
     } catch (e: any) {
       setScoreError(e.message ?? 'Network error')
     }
