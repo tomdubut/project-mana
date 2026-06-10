@@ -1,55 +1,43 @@
 import { createClient } from '@/lib/supabase/client'
-import type { Task, Priority, TaskStatus } from '@/types'
+import type { Task, TaskStatus, TaskPriority } from '@/types'
+
+const SELECT = '*, stream:work_streams(id,name,color), goal:goals(id,title)'
 
 export async function getTasks(filters?: {
-  projectId?: string
+  streamId?: string | null
   goalId?: string
   status?: TaskStatus
-  priority?: Priority
+  priority?: TaskPriority
+  openOnly?: boolean
 }) {
   const supabase = createClient()
-  let query = supabase
-    .from('tasks')
-    .select('*, project:projects(id,name,color), goal:goals(id,title)')
-    .order('created_at', { ascending: false })
-
-  if (filters?.projectId) query = query.eq('project_id', filters.projectId)
-  if (filters?.goalId) query = query.eq('goal_id', filters.goalId)
-  if (filters?.status) query = query.eq('status', filters.status)
-  if (filters?.priority) query = query.eq('priority', filters.priority)
-
-  const { data, error } = await query
+  let q = supabase.from('tasks').select(SELECT).order('created_at', { ascending: false })
+  if (filters?.streamId !== undefined) q = q.eq('stream_id', filters.streamId)
+  if (filters?.goalId)   q = q.eq('goal_id', filters.goalId)
+  if (filters?.status)   q = q.eq('status', filters.status)
+  if (filters?.priority) q = q.eq('priority', filters.priority)
+  if (filters?.openOnly) q = q.in('status', ['todo', 'in_progress', 'blocked'])
+  const { data, error } = await q
   if (error) throw error
   return data as Task[]
 }
 
-export async function createTask(task: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'completed_at'>) {
+export async function createTask(t: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'completed_at' | 'stream' | 'goal'>) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
   const { data, error } = await supabase
-    .from('tasks')
-    .insert({ ...task, user_id: user.id })
-    .select()
-    .single()
+    .from('tasks').insert({ ...t, user_id: user.id }).select(SELECT).single()
   if (error) throw error
   return data as Task
 }
 
 export async function updateTask(id: string, updates: Partial<Task>) {
   const supabase = createClient()
-  if (updates.status === 'done' && !updates.completed_at) {
-    updates.completed_at = new Date().toISOString()
-  }
-  if (updates.status && updates.status !== 'done') {
-    updates.completed_at = null
-  }
+  if (updates.status === 'done' && !updates.completed_at) updates.completed_at = new Date().toISOString()
+  if (updates.status && updates.status !== 'done') updates.completed_at = null
   const { data, error } = await supabase
-    .from('tasks')
-    .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select()
-    .single()
+    .from('tasks').update(updates).eq('id', id).select(SELECT).single()
   if (error) throw error
   return data as Task
 }

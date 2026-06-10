@@ -1,0 +1,85 @@
+import Anthropic from '@anthropic-ai/sdk'
+import type { Task, WorkStream } from '@/types'
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+interface ScoredTask {
+  id: string
+  score: number
+  reason: string
+}
+
+export async function scoreTasks(tasks: Task[], streams: WorkStream[]): Promise<ScoredTask[]> {
+  if (tasks.length === 0) return []
+
+  const today = new Date().toISOString().slice(0, 10)
+  const streamMap = Object.fromEntries(streams.map((s) => [s.id, s]))
+
+  const taskSummaries = tasks.map((t) => ({
+    id: t.id,
+    title: t.title,
+    priority: t.priority,
+    status: t.status,
+    due_date: t.due_date,
+    stream: t.stream_id ? streamMap[t.stream_id]?.name : null,
+    stream_deadline: t.stream_id ? streamMap[t.stream_id]?.deadline : null,
+  }))
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
+    messages: [
+      {
+        role: 'user',
+        content: `Today is ${today}. Score each task 1-10 (10 = most urgent to do today) and give a one-sentence reason. Consider: due date proximity, priority, stream deadline, and status. Respond ONLY with valid JSON array: [{"id":"...","score":N,"reason":"..."}]
+
+Tasks:
+${JSON.stringify(taskSummaries, null, 2)}`,
+      },
+    ],
+  })
+
+  const text = message.content[0].type === 'text' ? message.content[0].text : ''
+  const jsonMatch = text.match(/\[[\s\S]*\]/)
+  if (!jsonMatch) return []
+  return JSON.parse(jsonMatch[0]) as ScoredTask[]
+}
+
+export async function getTodayFocus(tasks: Task[], streams: WorkStream[]): Promise<{ id: string; reason: string }[]> {
+  if (tasks.length === 0) return []
+
+  const today = new Date().toISOString().slice(0, 10)
+  const streamMap = Object.fromEntries(streams.map((s) => [s.id, s]))
+
+  const taskSummaries = tasks
+    .sort((a, b) => (b.ai_score ?? 0) - (a.ai_score ?? 0))
+    .slice(0, 20)
+    .map((t) => ({
+      id: t.id,
+      title: t.title,
+      priority: t.priority,
+      status: t.status,
+      due_date: t.due_date,
+      ai_score: t.ai_score,
+      stream: t.stream_id ? streamMap[t.stream_id]?.name : null,
+    }))
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
+    messages: [
+      {
+        role: 'user',
+        content: `Today is ${today}. From these tasks, pick the 5 most important to focus on TODAY. For each give a short (max 15 words) reason why it matters now. Respond ONLY with valid JSON array: [{"id":"...","reason":"..."}] ordered by priority.
+
+Tasks:
+${JSON.stringify(taskSummaries, null, 2)}`,
+      },
+    ],
+  })
+
+  const text = message.content[0].type === 'text' ? message.content[0].text : ''
+  const jsonMatch = text.match(/\[[\s\S]*\]/)
+  if (!jsonMatch) return []
+  return JSON.parse(jsonMatch[0]) as { id: string; reason: string }[]
+}

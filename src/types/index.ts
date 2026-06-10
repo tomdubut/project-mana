@@ -1,13 +1,15 @@
-export type Priority = 'low' | 'medium' | 'high' | 'urgent'
-export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'cancelled'
-export type GoalStatus = 'active' | 'completed' | 'paused' | 'abandoned'
+export type TaskStatus   = 'todo' | 'in_progress' | 'done' | 'blocked'
+export type TaskPriority = 'high' | 'normal' | 'low'
 
-export interface Project {
+export interface WorkStream {
   id: string
   user_id: string
   name: string
   description: string | null
   color: string
+  is_ongoing: boolean
+  deadline: string | null
+  archived: boolean
   created_at: string
   updated_at: string
 }
@@ -15,34 +17,54 @@ export interface Project {
 export interface Goal {
   id: string
   user_id: string
-  project_id: string | null
+  stream_id: string | null
   title: string
   description: string | null
-  status: GoalStatus
   target_date: string | null
+  archived: boolean
   created_at: string
   updated_at: string
-  project?: Project
+  // computed
+  progress?: number
+  stream?: WorkStream | null
+  task_count?: number
+  done_count?: number
 }
 
 export interface Task {
   id: string
   user_id: string
-  project_id: string | null
+  stream_id: string | null
   goal_id: string | null
   title: string
   description: string | null
   status: TaskStatus
-  priority: Priority
+  priority: TaskPriority
   due_date: string | null
+  ai_score: number | null
+  ai_reason: string | null
   completed_at: string | null
   created_at: string
   updated_at: string
-  project?: Project
-  goal?: Goal
+  stream?: WorkStream | null
+  goal?: Goal | null
 }
 
-export interface TaskWithRelations extends Omit<Task, 'project' | 'goal'> {
-  project: Project | null
-  goal: Goal | null
+export interface KnowledgePage {
+  id: string
+  user_id: string
+  stream_id: string | null
+  title: string
+  content: string
+  created_at: string
+  updated_at: string
+  stream?: WorkStream | null
+}
+
+export interface ApiToken {
+  id: string
+  user_id: string
+  name: string
+  last_used: string | null
+  created_at: string
 }
