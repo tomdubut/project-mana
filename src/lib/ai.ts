@@ -43,7 +43,7 @@ ${JSON.stringify(taskSummaries, null, 2)}`,
 
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
   const jsonMatch = text.match(/\[[\s\S]*\]/)
-  if (!jsonMatch) return []
+  if (!jsonMatch) throw new Error(`Claude returned unexpected response: ${text.slice(0, 200)}`)
   return JSON.parse(jsonMatch[0]) as ScoredTask[]
 }
 
