@@ -50,8 +50,8 @@ export default function StrategyPage() {
   const orphanStreams = streams.filter((s) => !s.goal_id)
 
   return (
-    <div className="max-w-3xl mx-auto px-8 py-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <h1 className="text-xl font-bold text-gray-900">Strategy</h1>
         <div className="flex gap-2">
           <Button size="sm" variant="secondary" onClick={() => openNewStream(null)}>

@@ -58,7 +58,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-8 py-8 space-y-8">
+    <div className="max-w-2xl mx-auto px-4 sm:px-8 py-8 space-y-8">
       <h1 className="text-xl font-bold text-gray-900">Settings</h1>
 
       {/* Account */}

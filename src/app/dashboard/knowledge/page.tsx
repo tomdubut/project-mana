@@ -135,7 +135,7 @@ export default function KnowledgePage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {selected ? (
           <>
-            <div className="flex items-center justify-between px-8 py-4 border-b border-gray-100 bg-white">
+            <div className="flex items-center justify-between px-4 sm:px-8 py-4 border-b border-gray-100 bg-white">
               {editing ? (
                 <Input
                   value={draft.title}
@@ -177,7 +177,7 @@ export default function KnowledgePage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-8 py-6">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
               {editing ? (
                 <textarea
                   value={draft.content}

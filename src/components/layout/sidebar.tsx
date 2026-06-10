@@ -34,8 +34,16 @@ export function Sidebar() {
 
   const currentView = VIEWS.find((v) => pathname.endsWith(v.key))?.key ?? 'todo'
 
+  const MOBILE_NAV = [
+    { key: 'todo',     label: 'To-Do',    icon: ListTodo    },
+    { key: 'tasks',    label: 'Tasks',    icon: CheckSquare },
+    { key: 'strategy', label: 'Strategy', icon: BarChart2   },
+    { key: 'knowledge',label: 'Knowledge',icon: BookOpen    },
+  ]
+
   return (
-    <aside className="fixed left-0 top-0 h-screen w-56 bg-white border-r border-gray-100 flex flex-col z-40">
+    <>
+    <aside className="hidden md:flex fixed left-0 top-0 h-screen w-56 bg-white border-r border-gray-100 flex-col z-40">
       {/* Logo */}
       <div className="px-4 py-4 border-b border-gray-100">
         <div className="flex items-center gap-2">
@@ -118,5 +126,37 @@ export function Sidebar() {
         </button>
       </div>
     </aside>
+
+    {/* Mobile bottom nav */}
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex md:hidden">
+      {MOBILE_NAV.map(({ key, label, icon: Icon }) => (
+        <Link
+          key={key}
+          href={`/dashboard/${key}`}
+          className={cn(
+            'flex-1 flex flex-col items-center justify-center py-2 gap-1 text-xs font-medium transition-colors',
+            currentView === key
+              ? 'text-indigo-600'
+              : 'text-gray-500 hover:text-gray-900'
+          )}
+        >
+          <Icon size={20} />
+          {label}
+        </Link>
+      ))}
+      <Link
+        href="/dashboard/settings"
+        className={cn(
+          'flex-1 flex flex-col items-center justify-center py-2 gap-1 text-xs font-medium transition-colors',
+          pathname.endsWith('settings')
+            ? 'text-indigo-600'
+            : 'text-gray-500 hover:text-gray-900'
+        )}
+      >
+        <Settings size={20} />
+        Settings
+      </Link>
+    </nav>
+    </>
   )
 }

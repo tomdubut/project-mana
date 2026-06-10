@@ -88,7 +88,7 @@ function TasksInner() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-8 py-8">
+    <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -230,7 +230,7 @@ function TaskRow({ task, streams, menuOpen, onMenu, onCloseMenu, onToggle, onEdi
         <div className="relative">
           <button
             onClick={onMenu}
-            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-700 p-1 rounded transition-all"
+            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-gray-400 hover:text-gray-700 p-1 rounded transition-all"
           >
             <MoreHorizontal size={15} />
           </button>
