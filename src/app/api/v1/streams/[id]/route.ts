@@ -11,7 +11,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params
   if (!await getStream(userId, id)) return apiError('Not found', 404)
   const body = await request.json()
-  const allowed = ['name', 'description', 'color', 'is_ongoing', 'deadline', 'archived']
+  const allowed = ['name', 'description', 'color', 'is_ongoing', 'deadline', 'archived', 'goal_id']
   const updates: Record<string, unknown> = {}
   for (const key of allowed) { if (key in body) updates[key] = body[key] }
   const { data, error } = await supabaseAdmin().from('work_streams').update(updates).eq('id', id).select().single()

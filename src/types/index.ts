@@ -1,23 +1,9 @@
 export type TaskStatus   = 'todo' | 'in_progress' | 'done' | 'blocked'
 export type TaskPriority = 'high' | 'normal' | 'low'
 
-export interface WorkStream {
-  id: string
-  user_id: string
-  name: string
-  description: string | null
-  color: string
-  is_ongoing: boolean
-  deadline: string | null
-  archived: boolean
-  created_at: string
-  updated_at: string
-}
-
 export interface Goal {
   id: string
   user_id: string
-  stream_id: string | null
   title: string
   description: string | null
   target_date: string | null
@@ -26,9 +12,24 @@ export interface Goal {
   updated_at: string
   // computed
   progress?: number
-  stream?: WorkStream | null
   task_count?: number
   done_count?: number
+  streams?: WorkStream[]
+}
+
+export interface WorkStream {
+  id: string
+  user_id: string
+  goal_id: string | null
+  name: string
+  description: string | null
+  color: string
+  is_ongoing: boolean
+  deadline: string | null
+  archived: boolean
+  created_at: string
+  updated_at: string
+  goal?: Goal | null
 }
 
 export interface Task {

@@ -24,11 +24,12 @@ create type public.task_status   as enum ('todo', 'in_progress', 'done', 'blocke
 create type public.task_priority as enum ('high', 'normal', 'low');
 
 -- ══════════════════════════════════════════════════════════
--- WORK STREAMS
+-- WORK STREAMS  (link up to a Goal)
 -- ══════════════════════════════════════════════════════════
 create table public.work_streams (
   id          uuid primary key default uuid_generate_v4(),
   user_id     uuid not null references auth.users(id) on delete cascade,
+  goal_id     uuid references public.goals(id) on delete set null,
   name        text not null,
   description text,
   color       text not null default '#6366f1',
@@ -44,12 +45,11 @@ create policy "own work_streams" on public.work_streams for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ══════════════════════════════════════════════════════════
--- GOALS
+-- GOALS  (top level — no stream dependency)
 -- ══════════════════════════════════════════════════════════
 create table public.goals (
   id          uuid primary key default uuid_generate_v4(),
   user_id     uuid not null references auth.users(id) on delete cascade,
-  stream_id   uuid references public.work_streams(id) on delete set null,
   title       text not null,
   description text,
   target_date date,
@@ -142,7 +142,7 @@ create index idx_tasks_status      on public.tasks(status);
 create index idx_tasks_priority    on public.tasks(priority);
 create index idx_tasks_due_date    on public.tasks(due_date);
 create index idx_goals_user        on public.goals(user_id);
-create index idx_goals_stream      on public.goals(stream_id);
+create index idx_streams_goal      on public.work_streams(goal_id);
 create index idx_streams_user      on public.work_streams(user_id);
 create index idx_knowledge_user    on public.knowledge_pages(user_id);
 create index idx_knowledge_stream  on public.knowledge_pages(stream_id);

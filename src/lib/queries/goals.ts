@@ -1,15 +1,13 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Goal } from '@/types'
 
-export async function getGoals(streamId?: string) {
+export async function getGoals() {
   const supabase = createClient()
-  let q = supabase
+  const { data, error } = await supabase
     .from('goals')
-    .select('*, stream:work_streams(id,name,color), tasks(id,status)')
+    .select('*, streams:work_streams(id,name,color,is_ongoing,deadline), tasks(id,status)')
     .eq('archived', false)
     .order('created_at', { ascending: false })
-  if (streamId) q = q.eq('stream_id', streamId)
-  const { data, error } = await q
   if (error) throw error
 
   return (data ?? []).map((g: any) => {
@@ -25,7 +23,7 @@ export async function getGoals(streamId?: string) {
   })
 }
 
-export async function createGoal(g: Omit<Goal, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'progress' | 'stream' | 'task_count' | 'done_count'>) {
+export async function createGoal(g: Pick<Goal, 'title' | 'description' | 'target_date'>) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')

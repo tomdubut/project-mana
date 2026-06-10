@@ -4,19 +4,13 @@ export async function GET(request: Request) {
   const userId = await authenticateApiRequest(request)
   if (!userId) return apiError('Unauthorized', 401)
 
-  const url = new URL(request.url)
-  const streamId = url.searchParams.get('stream_id')
-
-  let q = supabaseAdmin()
+  const { data, error } = await supabaseAdmin()
     .from('goals')
-    .select('*, tasks(id,status)')
+    .select('*, streams:work_streams(id,name,color), tasks(id,status)')
     .eq('user_id', userId)
     .eq('archived', false)
     .order('created_at', { ascending: false })
 
-  if (streamId) q = q.eq('stream_id', streamId)
-
-  const { data, error } = await q
   if (error) return apiError(error.message, 500)
 
   const goals = (data ?? []).map((g: any) => {
@@ -33,12 +27,12 @@ export async function POST(request: Request) {
   if (!userId) return apiError('Unauthorized', 401)
 
   const body = await request.json()
-  const { title, description, stream_id, target_date } = body
+  const { title, description, target_date } = body
   if (!title) return apiError('title is required')
 
   const { data, error } = await supabaseAdmin()
     .from('goals')
-    .insert({ title, description, stream_id, target_date, user_id: userId })
+    .insert({ title, description, target_date, user_id: userId })
     .select().single()
 
   if (error) return apiError(error.message, 500)

@@ -12,7 +12,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!await getGoal(userId, id)) return apiError('Not found', 404)
 
   const body = await request.json()
-  const allowed = ['title', 'description', 'stream_id', 'target_date', 'archived']
+  const allowed = ['title', 'description', 'target_date', 'archived']
   const updates: Record<string, unknown> = {}
   for (const key of allowed) { if (key in body) updates[key] = body[key] }
 

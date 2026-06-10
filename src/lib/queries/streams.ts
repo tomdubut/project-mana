@@ -3,14 +3,14 @@ import type { WorkStream } from '@/types'
 
 export async function getStreams(includeArchived = false) {
   const supabase = createClient()
-  let q = supabase.from('work_streams').select('*').order('name')
+  let q = supabase.from('work_streams').select('*, goal:goals(id,title)').order('name')
   if (!includeArchived) q = q.eq('archived', false)
   const { data, error } = await q
   if (error) throw error
   return data as WorkStream[]
 }
 
-export async function createStream(s: Pick<WorkStream, 'name' | 'description' | 'color' | 'is_ongoing' | 'deadline'>) {
+export async function createStream(s: Pick<WorkStream, 'name' | 'description' | 'color' | 'is_ongoing' | 'deadline' | 'goal_id'>) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
