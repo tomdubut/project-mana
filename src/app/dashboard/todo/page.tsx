@@ -18,6 +18,7 @@ export default function TodoPage() {
   const [allOpen, setAllOpen] = useState<Task[]>([])
   const [streams, setStreams] = useState<WorkStream[]>([])
   const [scoring, setScoring] = useState(false)
+  const [scoreError, setScoreError] = useState('')
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -42,9 +43,14 @@ export default function TodoPage() {
 
   async function runAiScore() {
     setScoring(true)
+    setScoreError('')
     try {
-      await fetch('/api/internal/score', { method: 'POST' })
-    } catch {}
+      const res = await fetch('/api/internal/score', { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) setScoreError(json.error ?? `Error ${res.status}`)
+    } catch (e: any) {
+      setScoreError(e.message ?? 'Network error')
+    }
     await load()
     setScoring(false)
   }
@@ -79,6 +85,12 @@ export default function TodoPage() {
           {scoring ? 'Scoring…' : 'Re-score with AI'}
         </Button>
       </div>
+
+      {scoreError && (
+        <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          AI scoring failed: {scoreError}
+        </div>
+      )}
 
       {unscored > 0 && (
         <div className="mb-5 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
