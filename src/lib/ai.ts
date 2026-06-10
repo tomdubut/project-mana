@@ -42,7 +42,7 @@ ${JSON.stringify(taskSummaries, null, 2)}`,
   })
 
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
-  const jsonMatch = text.match(/\[[\s\S]*\]/)
+  const jsonMatch = text.replace(/```json\s*/g, '').replace(/```/g, '').match(/\[[\s\S]*\]/)
   if (!jsonMatch) throw new Error(`Claude returned unexpected response: ${text.slice(0, 200)}`)
   return JSON.parse(jsonMatch[0]) as ScoredTask[]
 }
@@ -81,7 +81,7 @@ ${JSON.stringify(taskSummaries, null, 2)}`,
   })
 
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
-  const jsonMatch = text.match(/\[[\s\S]*\]/)
+  const jsonMatch = text.replace(/```json\s*/g, '').replace(/```/g, '').match(/\[[\s\S]*\]/)
   if (!jsonMatch) return []
   return JSON.parse(jsonMatch[0]) as { id: string; reason: string }[]
 }
