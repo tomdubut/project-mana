@@ -131,6 +131,52 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'list_pages',
+    description: 'List knowledge pages, optionally filtered by stream_id',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        stream_id: { type: 'string', description: 'Filter by work stream ID' },
+      },
+    },
+  },
+  {
+    name: 'create_page',
+    description: 'Create a new knowledge page',
+    inputSchema: {
+      type: 'object',
+      required: ['title'],
+      properties: {
+        title: { type: 'string' },
+        content: { type: 'string', description: 'Page content in Markdown' },
+        stream_id: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'update_page',
+    description: 'Update a knowledge page by ID',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: { type: 'string' },
+        title: { type: 'string' },
+        content: { type: 'string' },
+        stream_id: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'delete_page',
+    description: 'Delete a knowledge page by ID',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: { id: { type: 'string' } },
+    },
+  },
 ]
 
 function mcpOk(id: unknown, result: unknown) {
@@ -268,6 +314,45 @@ async function callTool(userId: string, name: string, args: Record<string, unkno
       .select().single()
     if (error) throw new Error(error.message)
     return toolResult(data)
+  }
+
+  if (name === 'list_pages') {
+    let q = db.from('knowledge_pages').select('*, stream:work_streams(id,name,color)')
+      .eq('user_id', userId).order('updated_at', { ascending: false })
+    if (args.stream_id) q = q.eq('stream_id', args.stream_id)
+    const { data, error } = await q
+    if (error) throw new Error(error.message)
+    return toolResult(data)
+  }
+
+  if (name === 'create_page') {
+    if (!args.title) throw new Error('title is required')
+    const { data, error } = await db.from('knowledge_pages')
+      .insert({ title: args.title, content: args.content ?? '', stream_id: args.stream_id ?? null, user_id: userId })
+      .select().single()
+    if (error) throw new Error(error.message)
+    return toolResult(data)
+  }
+
+  if (name === 'update_page') {
+    if (!args.id) throw new Error('id is required')
+    const { data: existing } = await db.from('knowledge_pages').select('id').eq('id', args.id).eq('user_id', userId).single()
+    if (!existing) throw new Error('Page not found')
+    const allowed = ['title', 'content', 'stream_id']
+    const updates: Record<string, unknown> = {}
+    for (const k of allowed) { if (k in args) updates[k] = args[k] }
+    const { data, error } = await db.from('knowledge_pages').update(updates).eq('id', args.id).select().single()
+    if (error) throw new Error(error.message)
+    return toolResult(data)
+  }
+
+  if (name === 'delete_page') {
+    if (!args.id) throw new Error('id is required')
+    const { data: existing } = await db.from('knowledge_pages').select('id').eq('id', args.id).eq('user_id', userId).single()
+    if (!existing) throw new Error('Page not found')
+    const { error } = await db.from('knowledge_pages').delete().eq('id', args.id)
+    if (error) throw new Error(error.message)
+    return toolResult({ deleted: true })
   }
 
   throw new Error(`Unknown tool: ${name}`)
