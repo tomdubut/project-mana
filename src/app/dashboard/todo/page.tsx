@@ -51,13 +51,14 @@ export default function TodoPage() {
         let msg = `HTTP ${res.status}`
         try { msg = JSON.parse(text).error ?? msg } catch {}
         setScoreError(msg)
-        return
+      } else {
+        await load()
       }
     } catch (e: any) {
       setScoreError(e.message ?? 'Network error')
+    } finally {
+      setScoring(false)
     }
-    await load()
-    setScoring(false)
   }
 
   async function toggleDone(task: Task) {
