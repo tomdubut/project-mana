@@ -1,7 +1,7 @@
 import { authenticateApiRequest, apiError, apiOk, supabaseAdmin } from '@/lib/api-auth'
 
 async function getTask(userId: string, id: string) {
-  const { data } = await supabaseAdmin
+  const { data } = await supabaseAdmin()
     .from('tasks').select('*').eq('id', id).eq('user_id', userId).single()
   return data
 }
@@ -32,7 +32,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (updates.status === 'done') updates.completed_at = new Date().toISOString()
   else if (updates.status) updates.completed_at = null
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin()
     .from('tasks').update(updates).eq('id', id).select().single()
   if (error) return apiError(error.message, 500)
   return apiOk(data)
@@ -46,7 +46,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const task = await getTask(userId, id)
   if (!task) return apiError('Not found', 404)
 
-  const { error } = await supabaseAdmin.from('tasks').delete().eq('id', id)
+  const { error } = await supabaseAdmin().from('tasks').delete().eq('id', id)
   if (error) return apiError(error.message, 500)
   return apiOk({ deleted: true })
 }

@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const priority = url.searchParams.get('priority')
   const openOnly = url.searchParams.get('open_only') === 'true'
 
-  let q = supabaseAdmin
+  let q = supabaseAdmin()
     .from('tasks')
     .select('*, stream:work_streams(id,name), goal:goals(id,title)')
     .eq('user_id', userId)
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
   if (!title) return apiError('title is required')
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin()
     .from('tasks')
     .insert({ title, description, status: status ?? 'todo', priority: priority ?? 'normal', due_date, stream_id, goal_id, user_id: userId })
     .select()

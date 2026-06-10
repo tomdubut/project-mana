@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 import { createHash } from 'crypto'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 export function hashToken(token: string) {
   return createHash('sha256').update(token).digest('hex')
@@ -22,8 +24,9 @@ export async function authenticateApiRequest(request: Request): Promise<string |
 
   const token = auth.slice(7).trim()
   const hash = hashToken(token)
+  const admin = getSupabaseAdmin()
 
-  const { data } = await supabaseAdmin
+  const { data } = await admin
     .from('api_tokens')
     .select('user_id')
     .eq('token_hash', hash)
@@ -31,8 +34,7 @@ export async function authenticateApiRequest(request: Request): Promise<string |
 
   if (!data) return null
 
-  // Update last_used without blocking response
-  supabaseAdmin
+  admin
     .from('api_tokens')
     .update({ last_used: new Date().toISOString() })
     .eq('token_hash', hash)
@@ -49,4 +51,6 @@ export function apiOk(data: unknown, status = 200) {
   return Response.json(data, { status })
 }
 
-export { supabaseAdmin }
+export function supabaseAdmin() {
+  return getSupabaseAdmin()
+}

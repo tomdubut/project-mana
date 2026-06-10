@@ -6,7 +6,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data } = await supabaseAdmin
+  const { data } = await supabaseAdmin()
     .from('api_tokens')
     .select('id, name, last_used, created_at')
     .eq('user_id', user.id)
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   const token = generateToken()
   const hash = hashToken(token)
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin()
     .from('api_tokens')
     .insert({ name, token_hash: hash, user_id: user.id })
     .select('id, name, created_at')

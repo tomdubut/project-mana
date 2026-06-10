@@ -9,8 +9,8 @@ export async function POST() {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const [tasksRes, streamsRes] = await Promise.all([
-    supabaseAdmin.from('tasks').select('*').eq('user_id', user.id).in('status', ['todo', 'in_progress', 'blocked']),
-    supabaseAdmin.from('work_streams').select('*').eq('user_id', user.id),
+    supabaseAdmin().from('tasks').select('*').eq('user_id', user.id).in('status', ['todo', 'in_progress', 'blocked']),
+    supabaseAdmin().from('work_streams').select('*').eq('user_id', user.id),
   ])
 
   if (tasksRes.error) return Response.json({ error: tasksRes.error.message }, { status: 500 })
@@ -19,7 +19,7 @@ export async function POST() {
 
   await Promise.all(
     scores.map((s) =>
-      supabaseAdmin.from('tasks').update({ ai_score: s.score, ai_reason: s.reason }).eq('id', s.id)
+      supabaseAdmin().from('tasks').update({ ai_score: s.score, ai_reason: s.reason }).eq('id', s.id)
     )
   )
 

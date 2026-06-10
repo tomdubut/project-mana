@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const streamId = url.searchParams.get('stream_id')
 
-  let q = supabaseAdmin
+  let q = supabaseAdmin()
     .from('goals')
     .select('*, tasks(id,status)')
     .eq('user_id', userId)
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const { title, description, stream_id, target_date } = body
   if (!title) return apiError('title is required')
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin()
     .from('goals')
     .insert({ title, description, stream_id, target_date, user_id: userId })
     .select().single()
