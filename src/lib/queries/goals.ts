@@ -17,9 +17,11 @@ export async function getGoals(projectId?: string) {
 
 export async function createGoal(goal: Omit<Goal, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
   const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
   const { data, error } = await supabase
     .from('goals')
-    .insert(goal)
+    .insert({ ...goal, user_id: user.id })
     .select()
     .single()
   if (error) throw error

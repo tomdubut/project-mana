@@ -13,9 +13,11 @@ export async function getProjects() {
 
 export async function createProject(project: Pick<Project, 'name' | 'description' | 'color'>) {
   const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
   const { data, error } = await supabase
     .from('projects')
-    .insert(project)
+    .insert({ ...project, user_id: user.id })
     .select()
     .single()
   if (error) throw error

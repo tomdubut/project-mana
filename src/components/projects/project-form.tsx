@@ -16,6 +16,7 @@ interface ProjectFormProps {
 
 export function ProjectForm({ project, onSuccess, onCancel }: ProjectFormProps) {
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [form, setForm] = useState({
     name: project?.name ?? '',
     description: project?.description ?? '',
@@ -25,6 +26,7 @@ export function ProjectForm({ project, onSuccess, onCancel }: ProjectFormProps) 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name.trim()) return
+    setError('')
     setLoading(true)
     try {
       const payload = {
@@ -38,6 +40,8 @@ export function ProjectForm({ project, onSuccess, onCancel }: ProjectFormProps) 
         await createProject(payload)
       }
       onSuccess()
+    } catch (err: any) {
+      setError(err.message ?? 'Something went wrong')
     } finally {
       setLoading(false)
     }
@@ -82,6 +86,7 @@ export function ProjectForm({ project, onSuccess, onCancel }: ProjectFormProps) 
           ))}
         </div>
       </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={loading}>
