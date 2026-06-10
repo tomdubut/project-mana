@@ -31,7 +31,8 @@ export async function updateSession(request: NextRequest) {
   const isAuthPage = url.pathname.startsWith('/login') || url.pathname.startsWith('/signup')
 
   const isApiRoute = url.pathname.startsWith('/api/')
-  if (!user && !isAuthPage && !isApiRoute && url.pathname !== '/') {
+  const isPublicRoute = url.pathname.startsWith('/.well-known/')
+  if (!user && !isAuthPage && !isApiRoute && !isPublicRoute && url.pathname !== '/') {
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
