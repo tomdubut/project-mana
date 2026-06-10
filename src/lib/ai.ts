@@ -29,11 +29,11 @@ export async function scoreTasks(tasks: Task[], streams: WorkStream[]): Promise<
 
   const message = await getClient().messages.create({
     model: 'claude-haiku-4-5',
-    max_tokens: 1024,
+    max_tokens: 4096,
     messages: [
       {
         role: 'user',
-        content: `Today is ${today}. Score each task 1-10 (10 = most urgent to do today) and give a one-sentence reason. Consider: due date proximity, priority, stream deadline, and status. Respond ONLY with valid JSON array: [{"id":"...","score":N,"reason":"..."}]
+        content: `Today is ${today}. Score each task 1-10 (10 = most urgent to do today) and give a one-sentence reason. Consider: due date proximity, priority, stream deadline, and status. Respond ONLY with valid JSON array, no markdown: [{"id":"...","score":N,"reason":"..."}]
 
 Tasks:
 ${JSON.stringify(taskSummaries, null, 2)}`,
