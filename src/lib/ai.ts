@@ -1,7 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { Task, WorkStream } from '@/types'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+function getClient() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+}
 
 interface ScoredTask {
   id: string
@@ -25,8 +27,8 @@ export async function scoreTasks(tasks: Task[], streams: WorkStream[]): Promise<
     stream_deadline: t.stream_id ? streamMap[t.stream_id]?.deadline : null,
   }))
 
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+  const message = await getClient().messages.create({
+    model: 'claude-haiku-4-5',
     max_tokens: 1024,
     messages: [
       {
@@ -64,8 +66,8 @@ export async function getTodayFocus(tasks: Task[], streams: WorkStream[]): Promi
       stream: t.stream_id ? streamMap[t.stream_id]?.name : null,
     }))
 
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+  const message = await getClient().messages.create({
+    model: 'claude-haiku-4-5',
     max_tokens: 1024,
     messages: [
       {
