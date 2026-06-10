@@ -93,9 +93,27 @@ const TOOLS = [
     },
   },
   {
+    name: 'delete_goal',
+    description: 'Delete a goal by ID',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: { id: { type: 'string' } },
+    },
+  },
+  {
     name: 'list_streams',
     description: 'List all active work streams',
     inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'delete_stream',
+    description: 'Delete a work stream by ID',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: { id: { type: 'string' } },
+    },
   },
   {
     name: 'create_stream',
@@ -216,11 +234,29 @@ async function callTool(userId: string, name: string, args: Record<string, unkno
     return toolResult(data)
   }
 
+  if (name === 'delete_goal') {
+    if (!args.id) throw new Error('id is required')
+    const { data: existing } = await db.from('goals').select('id').eq('id', args.id).eq('user_id', userId).single()
+    if (!existing) throw new Error('Goal not found')
+    const { error } = await db.from('goals').delete().eq('id', args.id)
+    if (error) throw new Error(error.message)
+    return toolResult({ deleted: true })
+  }
+
   if (name === 'list_streams') {
     const { data, error } = await db.from('work_streams')
       .select('*, goal:goals(id,title)').eq('user_id', userId).eq('archived', false).order('name')
     if (error) throw new Error(error.message)
     return toolResult(data)
+  }
+
+  if (name === 'delete_stream') {
+    if (!args.id) throw new Error('id is required')
+    const { data: existing } = await db.from('work_streams').select('id').eq('id', args.id).eq('user_id', userId).single()
+    if (!existing) throw new Error('Stream not found')
+    const { error } = await db.from('work_streams').delete().eq('id', args.id)
+    if (error) throw new Error(error.message)
+    return toolResult({ deleted: true })
   }
 
   if (name === 'create_stream') {
