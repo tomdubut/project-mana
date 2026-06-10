@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { supabaseAdmin } from '@/lib/api-auth'
 import { scoreTasks } from '@/lib/ai'
 import type { Task, WorkStream } from '@/types'
 
@@ -10,8 +9,8 @@ export async function POST() {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
     const [tasksRes, streamsRes] = await Promise.all([
-      supabaseAdmin().from('tasks').select('*').eq('user_id', user.id).in('status', ['todo', 'in_progress', 'blocked']),
-      supabaseAdmin().from('work_streams').select('*').eq('user_id', user.id),
+      supabase.from('tasks').select('*').in('status', ['todo', 'in_progress', 'blocked']),
+      supabase.from('work_streams').select('*'),
     ])
 
     if (tasksRes.error) return Response.json({ error: tasksRes.error.message }, { status: 500 })
@@ -21,7 +20,7 @@ export async function POST() {
 
     await Promise.all(
       scores.map((s) =>
-        supabaseAdmin().from('tasks').update({ ai_score: s.score, ai_reason: s.reason }).eq('id', s.id)
+        supabase.from('tasks').update({ ai_score: s.score, ai_reason: s.reason }).eq('id', s.id)
       )
     )
 
