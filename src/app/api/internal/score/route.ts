@@ -14,7 +14,7 @@ export async function POST() {
     ])
 
     if (tasksRes.error) return Response.json({ error: tasksRes.error.message }, { status: 500 })
-    if (!tasksRes.data?.length) return Response.json({ scored: 0 })
+    if (!tasksRes.data?.length) return Response.json({ scored: 0, debug: { user_id: user.id, task_count: tasksRes.data?.length ?? 0 } })
 
     const scores = await scoreTasks(tasksRes.data as Task[], (streamsRes.data ?? []) as WorkStream[])
 
