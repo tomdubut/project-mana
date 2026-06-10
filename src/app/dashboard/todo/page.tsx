@@ -45,7 +45,7 @@ export default function TodoPage() {
     setScoring(true)
     setScoreError('')
     try {
-      const res = await fetch('/api/internal/score', { method: 'POST' })
+      const res = await fetch('/api/internal/score', { method: 'POST', credentials: 'include' })
       const text = await res.text()
       if (!res.ok) {
         let msg = `HTTP ${res.status}`
