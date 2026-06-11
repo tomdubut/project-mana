@@ -8,13 +8,12 @@ import type { Task, WorkStream, TaskStatus, TaskPriority } from '@/types'
 interface TaskPanelProps {
   task: Task | null
   streams: WorkStream[]
-  goals?: Goal[]
   onClose: () => void
   onUpdate: (id: string, updates: Partial<Task>) => Promise<void>
   onDelete: (id: string) => void
 }
 
-export function TaskPanel({ task, streams, goals, onClose, onUpdate, onDelete }: TaskPanelProps) {
+export function TaskPanel({ task, streams, onClose, onUpdate, onDelete }: TaskPanelProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState({
     title: '',

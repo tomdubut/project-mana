@@ -187,7 +187,6 @@ function TasksInner() {
       <TaskPanel
         task={panelTask}
         streams={streams}
-        goals={goals}
         onClose={() => setPanelTask(null)}
         onUpdate={async (id, updates) => { await updateTask(id, updates); load() }}
         onDelete={async (id) => { await deleteTask(id); load(); setPanelTask(null) }}

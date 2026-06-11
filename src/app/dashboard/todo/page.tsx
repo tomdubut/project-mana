@@ -157,7 +157,6 @@ export default function TodoPage() {
     <TaskPanel
       task={panelTask}
       streams={streams}
-      goals={goals}
       onClose={() => setPanelTask(null)}
       onUpdate={async (id, updates) => { await updateTask(id, updates); await load() }}
       onDelete={async (id) => { await deleteTask(id); await load(); setPanelTask(null) }}
