@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { Sparkles, RefreshCw, CheckCircle2, Circle, Clock, AlertTriangle } from 'lucide-react'
-import { getTasks, updateTask } from '@/lib/queries/tasks'
+import { getTasks, updateTask, deleteTask } from '@/lib/queries/tasks'
 import { getStreams } from '@/lib/queries/streams'
+import { getGoals } from '@/lib/queries/goals'
 import { Button } from '@/components/ui/button'
 import { cn, PRIORITY_CONFIG, STATUS_CONFIG, formatDate, isOverdue } from '@/lib/utils'
-import type { Task, WorkStream } from '@/types'
+import { TaskPanel } from '@/components/tasks/task-panel'
+import type { Task, WorkStream, Goal } from '@/types'
 
 interface FocusItem {
   task: Task
@@ -17,17 +19,21 @@ export default function TodoPage() {
   const [focusItems, setFocusItems] = useState<FocusItem[]>([])
   const [allOpen, setAllOpen] = useState<Task[]>([])
   const [streams, setStreams] = useState<WorkStream[]>([])
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [panelTask, setPanelTask] = useState<Task | null>(null)
   const [scoring, setScoring] = useState(false)
   const [scoreError, setScoreError] = useState('')
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    const [tasks, s] = await Promise.all([
+    const [tasks, s, g] = await Promise.all([
       getTasks({ openOnly: true }),
       getStreams(),
+      getGoals(),
     ])
     setAllOpen(tasks)
     setStreams(s)
+    setGoals(g)
 
     // Build focus list from AI scores already stored
     const scored = tasks
@@ -121,6 +127,7 @@ export default function TodoPage() {
               reason={reason}
               streams={streams}
               onToggle={() => toggleDone(task)}
+              onOpen={() => setPanelTask(task)}
             />
           ))}
         </div>
@@ -135,30 +142,38 @@ export default function TodoPage() {
             {allOpen
               .filter((t) => !focusItems.find((f) => f.task.id === t.id))
               .map((task) => (
-                <SmallTaskRow key={task.id} task={task} onToggle={() => toggleDone(task)} />
+                <SmallTaskRow key={task.id} task={task} onToggle={() => toggleDone(task)} onOpen={() => setPanelTask(task)} />
               ))}
           </div>
         </div>
       )}
     </PageShell>
+    <TaskPanel
+      task={panelTask}
+      streams={streams}
+      goals={goals}
+      onClose={() => setPanelTask(null)}
+      onUpdate={async (id, updates) => { await updateTask(id, updates); await load() }}
+      onDelete={async (id) => { await deleteTask(id); await load(); setPanelTask(null) }}
+    />
   )
 }
 
-function FocusCard({ rank, task, reason, streams, onToggle }: {
-  rank: number; task: Task; reason: string; streams: WorkStream[]; onToggle: () => void
+function FocusCard({ rank, task, reason, streams, onToggle, onOpen }: {
+  rank: number; task: Task; reason: string; streams: WorkStream[]; onToggle: () => void; onOpen: () => void
 }) {
   const stream = streams.find((s) => s.id === task.stream_id)
   const priority = PRIORITY_CONFIG[task.priority]
   const overdue = isOverdue(task.due_date, task.status)
 
   return (
-    <div className={cn(
-      'bg-white rounded-xl border border-gray-100 p-4 flex gap-4 items-start hover:border-gray-200 transition-all',
+    <div onClick={onOpen} className={cn(
+      'bg-white rounded-xl border border-gray-100 p-4 flex gap-4 items-start hover:border-gray-200 transition-all cursor-pointer',
       task.status === 'done' && 'opacity-50'
     )}>
       <div className="flex-shrink-0 flex flex-col items-center gap-1 pt-0.5">
         <span className="text-xs font-bold text-gray-300 w-5 text-center">#{rank}</span>
-        <button onClick={onToggle} className="text-gray-300 hover:text-green-500 transition-colors">
+        <button onClick={(e) => { e.stopPropagation(); onToggle() }} className="text-gray-300 hover:text-green-500 transition-colors">
           {task.status === 'done' ? <CheckCircle2 size={20} className="text-green-500" /> : <Circle size={20} />}
         </button>
       </div>
@@ -204,11 +219,11 @@ function FocusCard({ rank, task, reason, streams, onToggle }: {
   )
 }
 
-function SmallTaskRow({ task, onToggle }: { task: Task; onToggle: () => void }) {
+function SmallTaskRow({ task, onToggle, onOpen }: { task: Task; onToggle: () => void; onOpen: () => void }) {
   const priority = PRIORITY_CONFIG[task.priority]
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white transition-colors group">
-      <button onClick={onToggle} className="text-gray-300 hover:text-green-500 transition-colors flex-shrink-0">
+    <div onClick={onOpen} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white transition-colors group cursor-pointer">
+      <button onClick={(e) => { e.stopPropagation(); onToggle() }} className="text-gray-300 hover:text-green-500 transition-colors flex-shrink-0">
         <Circle size={16} />
       </button>
       <span className="text-sm text-gray-700 flex-1 truncate">{task.title}</span>
