@@ -78,6 +78,7 @@ export default function TodoPage() {
   const unscored = allOpen.filter((t) => t.ai_score === null).length
 
   return (
+    <>
     <PageShell>
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -156,6 +157,7 @@ export default function TodoPage() {
       onUpdate={async (id, updates) => { await updateTask(id, updates); await load() }}
       onDelete={async (id) => { await deleteTask(id); await load(); setPanelTask(null) }}
     />
+    </>
   )
 }
 
