@@ -240,8 +240,11 @@ async function callTool(userId: string, name: string, args: Record<string, unkno
 WORKSPACES:
   - The user may have multiple workspaces (e.g. "Work", "Personal", "Side project")
   - Each workspace has its own goals, streams, tasks, and knowledge pages
-  - Use list_workspaces to see available workspaces and their IDs
-  - Always pass workspace_id when creating items so they belong to the correct workspace
+  - Always call list_workspaces first to see available workspaces and their IDs
+  - When the user mentions a workspace by name, match it to the correct workspace_id
+  - If the user does not specify a workspace, ask which one they mean — never assume
+  - You cannot switch the active workspace in the user's browser (that is a UI action) — but you can read and write data in any workspace by passing the correct workspace_id to every tool
+  - Always pass workspace_id when creating or listing items so they belong to / come from the correct workspace
 
 HIERARCHY (always respect this order):
   Goals → Work Streams → Tasks
