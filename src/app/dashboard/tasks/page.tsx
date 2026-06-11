@@ -87,6 +87,7 @@ function TasksInner() {
   }
 
   return (
+    <div className={cn('transition-all duration-300 ease-in-out', panelTask ? 'sm:mr-[420px]' : '')}>
     <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -174,6 +175,7 @@ function TasksInner() {
         </div>
       )}
 
+    </div>
       <TaskPanel
         task={panelTask}
         streams={streams}

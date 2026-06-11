@@ -79,6 +79,7 @@ export default function TodoPage() {
 
   return (
     <>
+    <div className={cn('transition-all duration-300 ease-in-out', panelTask ? 'sm:mr-[420px]' : '')}>
     <PageShell>
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -149,6 +150,7 @@ export default function TodoPage() {
         </div>
       )}
     </PageShell>
+    </div>
     <TaskPanel
       task={panelTask}
       streams={streams}
