@@ -28,10 +28,10 @@ const TOOLS = [
   },
   {
     name: 'create_task',
-    description: 'Create a new task. workspace_id is REQUIRED — always call list_workspaces first to get it.',
+    description: 'Create a new task. Pass stream_id when possible — workspace_id and goal_id are auto-resolved from the stream.',
     inputSchema: {
       type: 'object',
-      required: ['title', 'workspace_id'],
+      required: ['title'],
       properties: {
         title: { type: 'string' },
         description: { type: 'string' },
@@ -309,11 +309,24 @@ GENERAL RULES:
 
   if (name === 'create_task') {
     if (!args.title) throw new Error('title is required')
+    let workspaceId = args.workspace_id ?? null
+    let goalId = args.goal_id ?? null
+    if (args.stream_id) {
+      const { data: stream } = await db.from('work_streams').select('goal_id, workspace_id').eq('id', args.stream_id).single()
+      if (stream) {
+        if (!workspaceId && stream.workspace_id) workspaceId = stream.workspace_id
+        if (!goalId && stream.goal_id) goalId = stream.goal_id
+      }
+    }
+    if (!workspaceId) {
+      const { data: ws } = await db.from('workspaces').select('id').eq('user_id', userId).order('created_at').limit(1).single()
+      if (ws) workspaceId = ws.id
+    }
     const { data, error } = await db.from('tasks')
       .insert({ title: args.title, description: args.description ?? null, status: args.status ?? 'todo',
         priority: args.priority ?? 'normal', due_date: args.due_date ?? null,
-        stream_id: args.stream_id ?? null, goal_id: args.goal_id ?? null, user_id: userId,
-        workspace_id: args.workspace_id ?? null })
+        stream_id: args.stream_id ?? null, goal_id: goalId, user_id: userId,
+        workspace_id: workspaceId })
       .select().single()
     if (error) throw new Error(error.message)
     return toolResult(data)
