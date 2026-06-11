@@ -29,6 +29,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   for (const key of allowed) {
     if (key in body) updates[key] = body[key]
   }
+  if (updates.stream_id) {
+    const { data: stream } = await supabaseAdmin().from('work_streams').select('goal_id').eq('id', updates.stream_id as string).single()
+    if (stream?.goal_id) updates.goal_id = stream.goal_id
+  } else if ('stream_id' in body && !body.stream_id) {
+    // stream was cleared — don't auto-clear goal_id, leave as is
+  }
+
   if (updates.status === 'done') updates.completed_at = new Date().toISOString()
   else if (updates.status) updates.completed_at = null
 

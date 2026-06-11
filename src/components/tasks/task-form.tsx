@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { createTask, updateTask } from '@/lib/queries/tasks'
-import type { Task, WorkStream, Goal, TaskStatus, TaskPriority } from '@/types'
+import type { Task, WorkStream, TaskStatus, TaskPriority } from '@/types'
 
 interface TaskFormProps {
   task?: Task
   streams: WorkStream[]
-  goals: Goal[]
+  goals?: Goal[]
   onSuccess: () => void
   onCancel: () => void
 }
@@ -24,7 +24,6 @@ export function TaskForm({ task, streams, goals, onSuccess, onCancel }: TaskForm
     status: task?.status ?? 'todo' as TaskStatus,
     priority: task?.priority ?? 'normal' as TaskPriority,
     stream_id: task?.stream_id ?? '',
-    goal_id: task?.goal_id ?? '',
     due_date: task?.due_date ?? '',
   })
 
@@ -40,7 +39,6 @@ export function TaskForm({ task, streams, goals, onSuccess, onCancel }: TaskForm
         status: form.status,
         priority: form.priority,
         stream_id: form.stream_id || null,
-        goal_id: form.goal_id || null,
         due_date: form.due_date || null,
         ai_score: task?.ai_score ?? null,
         ai_reason: task?.ai_reason ?? null,
@@ -89,21 +87,12 @@ export function TaskForm({ task, streams, goals, onSuccess, onCancel }: TaskForm
           </Select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Work Stream</label>
-          <Select value={form.stream_id} onChange={(e) => setForm({ ...form, stream_id: e.target.value })}>
-            <option value="">No stream</option>
-            {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </Select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Goal</label>
-          <Select value={form.goal_id} onChange={(e) => setForm({ ...form, goal_id: e.target.value })}>
-            <option value="">No goal</option>
-            {goals.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
-          </Select>
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Work Stream</label>
+        <Select value={form.stream_id} onChange={(e) => setForm({ ...form, stream_id: e.target.value })}>
+          <option value="">No stream</option>
+          {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </Select>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Due date</label>

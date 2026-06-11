@@ -35,9 +35,15 @@ export async function POST(request: Request) {
 
   if (!title) return apiError('title is required')
 
+  let resolvedGoalId = goal_id ?? null
+  if (stream_id) {
+    const { data: stream } = await supabaseAdmin().from('work_streams').select('goal_id').eq('id', stream_id).single()
+    if (stream?.goal_id) resolvedGoalId = stream.goal_id
+  }
+
   const { data, error } = await supabaseAdmin()
     .from('tasks')
-    .insert({ title, description, status: status ?? 'todo', priority: priority ?? 'normal', due_date, stream_id, goal_id, user_id: userId })
+    .insert({ title, description, status: status ?? 'todo', priority: priority ?? 'normal', due_date, stream_id, goal_id: resolvedGoalId, user_id: userId })
     .select()
     .single()
 

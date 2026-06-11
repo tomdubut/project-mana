@@ -28,8 +28,13 @@ export async function createTask(t: Omit<Task, 'id' | 'user_id' | 'created_at' |
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
+  let taskData = { ...t, user_id: user.id }
+  if (t.stream_id && !t.goal_id) {
+    const { data: stream } = await supabase.from('work_streams').select('goal_id').eq('id', t.stream_id).single()
+    if (stream?.goal_id) taskData = { ...taskData, goal_id: stream.goal_id }
+  }
   const { data, error } = await supabase
-    .from('tasks').insert({ ...t, user_id: user.id }).select(SELECT).single()
+    .from('tasks').insert(taskData).select(SELECT).single()
   if (error) throw error
   return data as Task
 }

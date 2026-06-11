@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react'
 import { X, Trash2, Sparkles } from 'lucide-react'
 import { cn, PRIORITY_CONFIG, STATUS_CONFIG, formatDate } from '@/lib/utils'
-import type { Task, WorkStream, Goal, TaskStatus, TaskPriority } from '@/types'
+import type { Task, WorkStream, TaskStatus, TaskPriority } from '@/types'
 
 interface TaskPanelProps {
   task: Task | null
   streams: WorkStream[]
-  goals: Goal[]
+  goals?: Goal[]
   onClose: () => void
   onUpdate: (id: string, updates: Partial<Task>) => Promise<void>
   onDelete: (id: string) => void
@@ -21,7 +21,6 @@ export function TaskPanel({ task, streams, goals, onClose, onUpdate, onDelete }:
     description: '',
     due_date: '',
     stream_id: '',
-    goal_id: '',
   })
 
   useEffect(() => {
@@ -31,7 +30,6 @@ export function TaskPanel({ task, streams, goals, onClose, onUpdate, onDelete }:
         description: task.description ?? '',
         due_date: task.due_date ?? '',
         stream_id: task.stream_id ?? '',
-        goal_id: task.goal_id ?? '',
       })
       setEditing(false)
     }
@@ -40,7 +38,6 @@ export function TaskPanel({ task, streams, goals, onClose, onUpdate, onDelete }:
   if (!task) return null
 
   const stream = streams.find((s) => s.id === task.stream_id)
-  const goal = goals.find((g) => g.id === task.goal_id)
 
   async function handleSave() {
     if (!task) return
@@ -49,7 +46,6 @@ export function TaskPanel({ task, streams, goals, onClose, onUpdate, onDelete }:
       description: draft.description || null,
       due_date: draft.due_date || null,
       stream_id: draft.stream_id || null,
-      goal_id: draft.goal_id || null,
     })
     setEditing(false)
   }
@@ -61,7 +57,6 @@ export function TaskPanel({ task, streams, goals, onClose, onUpdate, onDelete }:
       description: task.description ?? '',
       due_date: task.due_date ?? '',
       stream_id: task.stream_id ?? '',
-      goal_id: task.goal_id ?? '',
     })
     setEditing(false)
   }
@@ -222,24 +217,6 @@ export function TaskPanel({ task, streams, goals, onClose, onUpdate, onDelete }:
               )}
             </div>
 
-            {/* Goal */}
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-400 w-20 flex-shrink-0">Goal</span>
-              {editing ? (
-                <select
-                  value={draft.goal_id}
-                  onChange={(e) => setDraft({ ...draft, goal_id: e.target.value })}
-                  className="text-sm text-gray-800 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                  <option value="">No goal</option>
-                  {goals.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
-                </select>
-              ) : goal ? (
-                <span className="text-sm text-gray-700">{goal.title}</span>
-              ) : (
-                <span className="text-sm text-gray-400 italic">None</span>
-              )}
-            </div>
           </div>
 
           {/* Description */}
