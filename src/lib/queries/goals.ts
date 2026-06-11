@@ -5,7 +5,7 @@ export async function getGoals(workspaceId?: string) {
   const supabase = createClient()
   let q = supabase
     .from('goals')
-    .select('*, streams:work_streams(id,name,color,is_ongoing,deadline), tasks(id,status)')
+    .select('*, streams:work_streams(id,name,color,is_ongoing,deadline,tasks(id,status)), tasks(id,status)')
     .eq('archived', false)
     .order('created_at', { ascending: false })
   if (workspaceId) q = q.eq('workspace_id', workspaceId)
@@ -13,7 +13,14 @@ export async function getGoals(workspaceId?: string) {
   if (error) throw error
 
   return (data ?? []).map((g: any) => {
-    const tasks = g.tasks ?? []
+    const directTasks: any[] = g.tasks ?? []
+    const streamTasks: any[] = (g.streams ?? []).flatMap((s: any) => s.tasks ?? [])
+    const seen = new Set<string>()
+    const tasks = [...directTasks, ...streamTasks].filter((t) => {
+      if (seen.has(t.id)) return false
+      seen.add(t.id)
+      return true
+    })
     const done = tasks.filter((t: any) => t.status === 'done').length
     const total = tasks.length
     return {
