@@ -31,8 +31,8 @@ export function Sidebar() {
   const { workspaces, activeWorkspace, setActiveWorkspaceId, createAndSwitch } = useWorkspace()
 
   useEffect(() => {
-    getStreams().then(setStreams).catch(() => {})
-  }, [pathname])
+    getStreams(false, activeWorkspace?.id).then(setStreams).catch(() => {})
+  }, [pathname, activeWorkspace?.id])
 
   async function handleSignOut() {
     const supabase = createClient()
