@@ -28,10 +28,10 @@ const TOOLS = [
   },
   {
     name: 'create_task',
-    description: 'Create a new task',
+    description: 'Create a new task. workspace_id is REQUIRED — always call list_workspaces first to get it.',
     inputSchema: {
       type: 'object',
-      required: ['title'],
+      required: ['title', 'workspace_id'],
       properties: {
         title: { type: 'string' },
         description: { type: 'string' },
@@ -83,10 +83,10 @@ const TOOLS = [
   },
   {
     name: 'create_goal',
-    description: 'Create a new goal',
+    description: 'Create a new goal. workspace_id is REQUIRED — always call list_workspaces first to get it.',
     inputSchema: {
       type: 'object',
-      required: ['title'],
+      required: ['title', 'workspace_id'],
       properties: {
         title: { type: 'string' },
         description: { type: 'string' },
@@ -140,10 +140,10 @@ const TOOLS = [
   },
   {
     name: 'create_stream',
-    description: 'Create a new work stream',
+    description: 'Create a new work stream. workspace_id is REQUIRED — always call list_workspaces first to get it.',
     inputSchema: {
       type: 'object',
-      required: ['name'],
+      required: ['name', 'workspace_id'],
       properties: {
         name: { type: 'string' },
         description: { type: 'string' },
@@ -168,10 +168,10 @@ const TOOLS = [
   },
   {
     name: 'create_page',
-    description: 'Create a new knowledge page',
+    description: 'Create a new knowledge page. workspace_id is REQUIRED — always call list_workspaces first to get it.',
     inputSchema: {
       type: 'object',
-      required: ['title'],
+      required: ['title', 'workspace_id'],
       properties: {
         title: { type: 'string' },
         content: { type: 'string', description: 'Page content in Markdown' },
@@ -240,11 +240,11 @@ async function callTool(userId: string, name: string, args: Record<string, unkno
 WORKSPACES:
   - The user may have multiple workspaces (e.g. "Work", "Personal", "Side project")
   - Each workspace has its own goals, streams, tasks, and knowledge pages
-  - Always call list_workspaces first to see available workspaces and their IDs
+  - ALWAYS call list_workspaces as your very first action — before anything else
   - When the user mentions a workspace by name, match it to the correct workspace_id
-  - If the user does not specify a workspace, ask which one they mean — never assume
+  - If the user does not specify a workspace, ask which one they mean — NEVER create anything without a workspace_id
+  - NEVER call create_task, create_goal, create_stream, or create_page without a workspace_id — items created without workspace_id will be invisible in the app
   - You cannot switch the active workspace in the user's browser (that is a UI action) — but you can read and write data in any workspace by passing the correct workspace_id to every tool
-  - Always pass workspace_id when creating or listing items so they belong to / come from the correct workspace
 
 HIERARCHY (always respect this order):
   Goals → Work Streams → Tasks
