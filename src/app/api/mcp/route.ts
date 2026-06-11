@@ -2,6 +2,11 @@ import { authenticateApiRequest, supabaseAdmin } from '@/lib/api-auth'
 
 const TOOLS = [
   {
+    name: 'get_context',
+    description: 'ALWAYS call this tool first before doing anything else in Project Mana. It returns how the app is structured, the rules you must follow, and your current data overview.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
     name: 'list_tasks',
     description: 'List tasks, optionally filtered by status, priority, stream_id, or open_only',
     inputSchema: {
@@ -198,6 +203,55 @@ function toolResult(content: unknown) {
 
 async function callTool(userId: string, name: string, args: Record<string, unknown>) {
   const db = supabaseAdmin()
+
+  if (name === 'get_context') {
+    const [goalsRes, streamsRes, tasksRes, pagesRes] = await Promise.all([
+      db.from('goals').select('id, title, target_date, archived').eq('user_id', userId).eq('archived', false).order('created_at', { ascending: false }),
+      db.from('work_streams').select('id, name, color, goal_id, archived').eq('user_id', userId).eq('archived', false).order('name'),
+      db.from('tasks').select('id, title, status, priority, stream_id, goal_id').eq('user_id', userId).in('status', ['todo', 'in_progress', 'blocked']).order('created_at', { ascending: false }),
+      db.from('knowledge_pages').select('id, title, stream_id').eq('user_id', userId).order('updated_at', { ascending: false }),
+    ])
+
+    const context = {
+      instructions: `You are connected to Project Mana, a personal productivity app. Follow these rules every time:
+
+HIERARCHY (always respect this order):
+  Goals → Work Streams → Tasks
+  - A Goal is the top-level objective (e.g. "Launch product", "Learn Spanish")
+  - A Work Stream is a category of work under a Goal (e.g. "Backend", "Marketing")
+  - A Task is a concrete action item, optionally linked to a Stream and/or Goal
+
+BEFORE CREATING ANYTHING:
+  1. Call list_goals — check if a relevant goal already exists
+  2. Call list_streams — check if a relevant stream already exists under that goal
+  3. Only create a new goal or stream if nothing relevant exists
+  4. Always link tasks to the most relevant existing stream and goal when possible
+
+CREATION ORDER (if starting fresh):
+  1. Create the Goal first
+  2. Create the Stream under that Goal (set goal_id)
+  3. Create Tasks linked to the Stream (set stream_id and goal_id)
+
+KNOWLEDGE PAGES:
+  - Use create_page / update_page to store notes, documentation, research, or reference material
+  - Link pages to a stream when the content belongs to a specific area of work
+
+GENERAL RULES:
+  - Never create duplicate goals or streams — always reuse existing ones when relevant
+  - When marking a task done, use update_task with status: "done"
+  - Priorities: urgent > high > normal > low
+  - Task statuses: todo, in_progress, blocked, done`,
+
+      current_state: {
+        goals: goalsRes.data ?? [],
+        streams: streamsRes.data ?? [],
+        open_tasks: tasksRes.data ?? [],
+        knowledge_pages: pagesRes.data ?? [],
+      },
+    }
+
+    return toolResult(context)
+  }
 
   if (name === 'list_tasks') {
     let q = db.from('tasks').select('*, stream:work_streams(id,name), goal:goals(id,title)')
