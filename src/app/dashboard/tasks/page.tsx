@@ -2,15 +2,14 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Plus, ChevronDown, Circle, CheckCircle2, Clock, Sparkles, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Circle, CheckCircle2, Clock, Sparkles, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { getTasks, createTask, updateTask, deleteTask } from '@/lib/queries/tasks'
 import { getStreams } from '@/lib/queries/streams'
 import { getGoals } from '@/lib/queries/goals'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { Modal } from '@/components/ui/modal'
-import { TaskForm } from '@/components/tasks/task-form'
+import { TaskPanel } from '@/components/tasks/task-panel'
 import { cn, PRIORITY_CONFIG, STATUS_CONFIG, formatDate, isOverdue } from '@/lib/utils'
 import type { Task, WorkStream, Goal, TaskStatus, TaskPriority } from '@/types'
 import { Suspense } from 'react'
@@ -25,7 +24,7 @@ function TasksInner() {
   const [filterStatus, setFilterStatus] = useState<TaskStatus | ''>('')
   const [filterPriority, setFilterPriority] = useState<TaskPriority | ''>('')
   const [filterStream, setFilterStream] = useState(streamFilter ?? '')
-  const [editTask, setEditTask] = useState<Task | null>(null)
+  const [panelTask, setPanelTask] = useState<Task | null>(null)
   const [quickTitle, setQuickTitle] = useState('')
   const [adding, setAdding] = useState(false)
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
@@ -163,7 +162,8 @@ function TasksInner() {
                       onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
                       onCloseMenu={() => setMenuOpen(null)}
                       onToggle={() => handleToggle(task)}
-                      onEdit={() => { setEditTask(task); setMenuOpen(null) }}
+                      onOpen={() => setPanelTask(task)}
+                      onEdit={() => { setPanelTask(task); setMenuOpen(null) }}
                       onDelete={() => { handleDelete(task.id); setMenuOpen(null) }}
                     />
                   ))}
@@ -174,25 +174,22 @@ function TasksInner() {
         </div>
       )}
 
-      <Modal open={!!editTask} onClose={() => setEditTask(null)} title="Edit task">
-        {editTask && (
-          <TaskForm
-            task={editTask}
-            streams={streams}
-            goals={goals}
-            onSuccess={() => { setEditTask(null); load() }}
-            onCancel={() => setEditTask(null)}
-          />
-        )}
-      </Modal>
+      <TaskPanel
+        task={panelTask}
+        streams={streams}
+        goals={goals}
+        onClose={() => setPanelTask(null)}
+        onUpdate={async (id, updates) => { await updateTask(id, updates); load() }}
+        onDelete={async (id) => { await deleteTask(id); load(); setPanelTask(null) }}
+      />
     </div>
   )
 }
 
-function TaskRow({ task, streams, menuOpen, onMenu, onCloseMenu, onToggle, onEdit, onDelete }: {
+function TaskRow({ task, streams, menuOpen, onMenu, onCloseMenu, onToggle, onOpen, onEdit, onDelete }: {
   task: Task; streams: WorkStream[];
   menuOpen: boolean; onMenu: () => void; onCloseMenu: () => void;
-  onToggle: () => void; onEdit: () => void; onDelete: () => void;
+  onToggle: () => void; onOpen: () => void; onEdit: () => void; onDelete: () => void;
 }) {
   const priority = PRIORITY_CONFIG[task.priority]
   const stream = streams.find((s) => s.id === task.stream_id)
@@ -206,9 +203,9 @@ function TaskRow({ task, streams, menuOpen, onMenu, onCloseMenu, onToggle, onEdi
       <button onClick={onToggle} className="flex-shrink-0 text-gray-300 hover:text-green-500 transition-colors">
         {task.status === 'done' ? <CheckCircle2 size={17} className="text-green-500" /> : <Circle size={17} />}
       </button>
-      <span className={cn('flex-1 text-sm text-gray-800 truncate', task.status === 'done' && 'line-through text-gray-400')}>
+      <button onClick={onOpen} className={cn('flex-1 text-sm text-gray-800 truncate text-left hover:text-indigo-600 transition-colors', task.status === 'done' && 'line-through text-gray-400')}>
         {task.title}
-      </span>
+      </button>
       <div className="flex items-center gap-2 flex-shrink-0">
         {task.ai_score !== null && (
           <span className="text-xs text-indigo-400 flex items-center gap-0.5">

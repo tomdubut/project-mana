@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { Plus, BookOpen, FileText, Pencil, Trash2, X, Save, Clock } from 'lucide-react'
+import MDEditor from '@uiw/react-md-editor'
 import { getPages, createPage, updatePage, deletePage } from '@/lib/queries/knowledge'
 import { getStreams } from '@/lib/queries/streams'
 import { Button } from '@/components/ui/button'
@@ -179,18 +180,20 @@ export default function KnowledgePage() {
 
             <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
               {editing ? (
-                <textarea
-                  value={draft.content}
-                  onChange={(e) => setDraft({ ...draft, content: e.target.value })}
-                  placeholder="Write in Markdown…"
-                  className="w-full h-full min-h-[400px] text-sm font-mono text-gray-800 border border-gray-200 rounded-xl p-4 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
-                />
+                <div data-color-mode="light" className="flex-1">
+                  <MDEditor
+                    value={draft.content}
+                    onChange={(val) => setDraft({ ...draft, content: val ?? '' })}
+                    height={500}
+                    preview="edit"
+                  />
+                </div>
               ) : (
                 <div className="prose prose-sm max-w-none">
                   {selected.content ? (
-                    <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans leading-relaxed">
-                      {selected.content}
-                    </pre>
+                    <div data-color-mode="light">
+                      <MDEditor.Markdown source={selected.content} className="text-sm text-gray-700 !bg-transparent" />
+                    </div>
                   ) : (
                     <p className="text-gray-400 italic">No content yet. Click Edit to add.</p>
                   )}
