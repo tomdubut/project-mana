@@ -7,8 +7,13 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
+    name: 'list_workspaces',
+    description: 'List all workspaces for the user',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
     name: 'list_tasks',
-    description: 'List tasks, optionally filtered by status, priority, stream_id, or open_only',
+    description: 'List tasks, optionally filtered by status, priority, stream_id, open_only, or workspace_id',
     inputSchema: {
       type: 'object',
       properties: {
@@ -17,6 +22,7 @@ const TOOLS = [
         stream_id: { type: 'string', description: 'Filter by work stream ID' },
         goal_id: { type: 'string', description: 'Filter by goal ID' },
         open_only: { type: 'boolean', description: 'If true, only return non-done tasks' },
+        workspace_id: { type: 'string', description: 'Filter by workspace ID' },
       },
     },
   },
@@ -34,6 +40,7 @@ const TOOLS = [
         due_date: { type: 'string', description: 'ISO date string' },
         stream_id: { type: 'string' },
         goal_id: { type: 'string' },
+        workspace_id: { type: 'string', description: 'Workspace ID to assign this task to' },
       },
     },
   },
@@ -67,7 +74,12 @@ const TOOLS = [
   {
     name: 'list_goals',
     description: 'List all active goals with their associated streams and task progress',
-    inputSchema: { type: 'object', properties: {} },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        workspace_id: { type: 'string', description: 'Filter by workspace ID' },
+      },
+    },
   },
   {
     name: 'create_goal',
@@ -79,6 +91,7 @@ const TOOLS = [
         title: { type: 'string' },
         description: { type: 'string' },
         target_date: { type: 'string', description: 'ISO date string' },
+        workspace_id: { type: 'string', description: 'Workspace ID to assign this goal to' },
       },
     },
   },
@@ -109,7 +122,12 @@ const TOOLS = [
   {
     name: 'list_streams',
     description: 'List all active work streams',
-    inputSchema: { type: 'object', properties: {} },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        workspace_id: { type: 'string', description: 'Filter by workspace ID' },
+      },
+    },
   },
   {
     name: 'delete_stream',
@@ -133,16 +151,18 @@ const TOOLS = [
         is_ongoing: { type: 'boolean' },
         deadline: { type: 'string', description: 'ISO date string' },
         goal_id: { type: 'string' },
+        workspace_id: { type: 'string', description: 'Workspace ID to assign this stream to' },
       },
     },
   },
   {
     name: 'list_pages',
-    description: 'List knowledge pages, optionally filtered by stream_id',
+    description: 'List knowledge pages, optionally filtered by stream_id or workspace_id',
     inputSchema: {
       type: 'object',
       properties: {
         stream_id: { type: 'string', description: 'Filter by work stream ID' },
+        workspace_id: { type: 'string', description: 'Filter by workspace ID' },
       },
     },
   },
@@ -156,6 +176,7 @@ const TOOLS = [
         title: { type: 'string' },
         content: { type: 'string', description: 'Page content in Markdown' },
         stream_id: { type: 'string' },
+        workspace_id: { type: 'string', description: 'Workspace ID to assign this page to' },
       },
     },
   },
@@ -205,15 +226,22 @@ async function callTool(userId: string, name: string, args: Record<string, unkno
   const db = supabaseAdmin()
 
   if (name === 'get_context') {
-    const [goalsRes, streamsRes, tasksRes, pagesRes] = await Promise.all([
-      db.from('goals').select('id, title, target_date, archived').eq('user_id', userId).eq('archived', false).order('created_at', { ascending: false }),
-      db.from('work_streams').select('id, name, color, goal_id, archived').eq('user_id', userId).eq('archived', false).order('name'),
-      db.from('tasks').select('id, title, status, priority, stream_id, goal_id').eq('user_id', userId).in('status', ['todo', 'in_progress', 'blocked']).order('created_at', { ascending: false }),
-      db.from('knowledge_pages').select('id, title, stream_id').eq('user_id', userId).order('updated_at', { ascending: false }),
+    const [workspacesRes, goalsRes, streamsRes, tasksRes, pagesRes] = await Promise.all([
+      db.from('workspaces').select('id, name, color').eq('user_id', userId).order('created_at'),
+      db.from('goals').select('id, title, target_date, archived, workspace_id').eq('user_id', userId).eq('archived', false).order('created_at', { ascending: false }),
+      db.from('work_streams').select('id, name, color, goal_id, archived, workspace_id').eq('user_id', userId).eq('archived', false).order('name'),
+      db.from('tasks').select('id, title, status, priority, stream_id, goal_id, workspace_id').eq('user_id', userId).in('status', ['todo', 'in_progress', 'blocked']).order('created_at', { ascending: false }),
+      db.from('knowledge_pages').select('id, title, stream_id, workspace_id').eq('user_id', userId).order('updated_at', { ascending: false }),
     ])
 
     const context = {
       instructions: `You are connected to Project Mana, a personal productivity app. Follow these rules every time:
+
+WORKSPACES:
+  - The user may have multiple workspaces (e.g. "Work", "Personal", "Side project")
+  - Each workspace has its own goals, streams, tasks, and knowledge pages
+  - Use list_workspaces to see available workspaces and their IDs
+  - Always pass workspace_id when creating items so they belong to the correct workspace
 
 HIERARCHY (always respect this order):
   Goals → Work Streams → Tasks
@@ -222,19 +250,21 @@ HIERARCHY (always respect this order):
   - A Task is a concrete action item, optionally linked to a Stream and/or Goal
 
 BEFORE CREATING ANYTHING:
-  1. Call list_goals — check if a relevant goal already exists
-  2. Call list_streams — check if a relevant stream already exists under that goal
-  3. Only create a new goal or stream if nothing relevant exists
-  4. Always link tasks to the most relevant existing stream and goal when possible
+  1. Call list_workspaces — identify the appropriate workspace
+  2. Call list_goals with workspace_id — check if a relevant goal already exists
+  3. Call list_streams with workspace_id — check if a relevant stream already exists under that goal
+  4. Only create a new goal or stream if nothing relevant exists
+  5. Always link tasks to the most relevant existing stream and goal when possible
 
 CREATION ORDER (if starting fresh):
-  1. Create the Goal first
-  2. Create the Stream under that Goal (set goal_id)
-  3. Create Tasks linked to the Stream (set stream_id and goal_id)
+  1. Create the Goal first (with workspace_id)
+  2. Create the Stream under that Goal (set goal_id and workspace_id)
+  3. Create Tasks linked to the Stream (set stream_id, goal_id, and workspace_id)
 
 KNOWLEDGE PAGES:
   - Use create_page / update_page to store notes, documentation, research, or reference material
   - Link pages to a stream when the content belongs to a specific area of work
+  - Always pass workspace_id when creating pages
 
 GENERAL RULES:
   - Never create duplicate goals or streams — always reuse existing ones when relevant
@@ -243,6 +273,7 @@ GENERAL RULES:
   - Task statuses: todo, in_progress, blocked, done`,
 
       current_state: {
+        workspaces: workspacesRes.data ?? [],
         goals: goalsRes.data ?? [],
         streams: streamsRes.data ?? [],
         open_tasks: tasksRes.data ?? [],
@@ -253,6 +284,12 @@ GENERAL RULES:
     return toolResult(context)
   }
 
+  if (name === 'list_workspaces') {
+    const { data, error } = await db.from('workspaces').select('*').eq('user_id', userId).order('created_at')
+    if (error) throw new Error(error.message)
+    return toolResult(data)
+  }
+
   if (name === 'list_tasks') {
     let q = db.from('tasks').select('*, stream:work_streams(id,name), goal:goals(id,title)')
       .eq('user_id', userId).order('created_at', { ascending: false })
@@ -261,6 +298,7 @@ GENERAL RULES:
     if (args.status) q = q.eq('status', args.status)
     if (args.priority) q = q.eq('priority', args.priority)
     if (args.open_only) q = q.in('status', ['todo', 'in_progress', 'blocked'])
+    if (args.workspace_id) q = q.eq('workspace_id', args.workspace_id)
     const { data, error } = await q
     if (error) throw new Error(error.message)
     return toolResult(data)
@@ -271,7 +309,8 @@ GENERAL RULES:
     const { data, error } = await db.from('tasks')
       .insert({ title: args.title, description: args.description ?? null, status: args.status ?? 'todo',
         priority: args.priority ?? 'normal', due_date: args.due_date ?? null,
-        stream_id: args.stream_id ?? null, goal_id: args.goal_id ?? null, user_id: userId })
+        stream_id: args.stream_id ?? null, goal_id: args.goal_id ?? null, user_id: userId,
+        workspace_id: args.workspace_id ?? null })
       .select().single()
     if (error) throw new Error(error.message)
     return toolResult(data)
@@ -301,9 +340,11 @@ GENERAL RULES:
   }
 
   if (name === 'list_goals') {
-    const { data, error } = await db.from('goals')
+    let q = db.from('goals')
       .select('*, streams:work_streams(id,name,color), tasks(id,status)')
       .eq('user_id', userId).eq('archived', false).order('created_at', { ascending: false })
+    if (args.workspace_id) q = q.eq('workspace_id', args.workspace_id)
+    const { data, error } = await q
     if (error) throw new Error(error.message)
     const goals = (data ?? []).map((g: any) => {
       const tasks = g.tasks ?? []
@@ -316,7 +357,8 @@ GENERAL RULES:
   if (name === 'create_goal') {
     if (!args.title) throw new Error('title is required')
     const { data, error } = await db.from('goals')
-      .insert({ title: args.title, description: args.description ?? null, target_date: args.target_date ?? null, user_id: userId })
+      .insert({ title: args.title, description: args.description ?? null, target_date: args.target_date ?? null, user_id: userId,
+        workspace_id: args.workspace_id ?? null })
       .select().single()
     if (error) throw new Error(error.message)
     return toolResult(data)
@@ -344,8 +386,10 @@ GENERAL RULES:
   }
 
   if (name === 'list_streams') {
-    const { data, error } = await db.from('work_streams')
+    let q = db.from('work_streams')
       .select('*, goal:goals(id,title)').eq('user_id', userId).eq('archived', false).order('name')
+    if (args.workspace_id) q = q.eq('workspace_id', args.workspace_id)
+    const { data, error } = await q
     if (error) throw new Error(error.message)
     return toolResult(data)
   }
@@ -364,7 +408,7 @@ GENERAL RULES:
     const { data, error } = await db.from('work_streams')
       .insert({ name: args.name, description: args.description ?? null, color: args.color ?? '#6366f1',
         is_ongoing: args.is_ongoing ?? true, deadline: args.deadline ?? null,
-        goal_id: args.goal_id ?? null, user_id: userId })
+        goal_id: args.goal_id ?? null, user_id: userId, workspace_id: args.workspace_id ?? null })
       .select().single()
     if (error) throw new Error(error.message)
     return toolResult(data)
@@ -374,6 +418,7 @@ GENERAL RULES:
     let q = db.from('knowledge_pages').select('*, stream:work_streams(id,name,color)')
       .eq('user_id', userId).order('updated_at', { ascending: false })
     if (args.stream_id) q = q.eq('stream_id', args.stream_id)
+    if (args.workspace_id) q = q.eq('workspace_id', args.workspace_id)
     const { data, error } = await q
     if (error) throw new Error(error.message)
     return toolResult(data)
@@ -382,7 +427,8 @@ GENERAL RULES:
   if (name === 'create_page') {
     if (!args.title) throw new Error('title is required')
     const { data, error } = await db.from('knowledge_pages')
-      .insert({ title: args.title, content: args.content ?? '', stream_id: args.stream_id ?? null, user_id: userId })
+      .insert({ title: args.title, content: args.content ?? '', stream_id: args.stream_id ?? null, user_id: userId,
+        workspace_id: args.workspace_id ?? null })
       .select().single()
     if (error) throw new Error(error.message)
     return toolResult(data)

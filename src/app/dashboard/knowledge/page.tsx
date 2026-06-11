@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { cn, formatDate } from '@/lib/utils'
+import { useWorkspace } from '@/lib/workspace-context'
 import type { KnowledgePage, WorkStream } from '@/types'
 
 export default function KnowledgePage() {
@@ -21,11 +22,13 @@ export default function KnowledgePage() {
   const [saving, setSaving] = useState(false)
   const [draft, setDraft] = useState({ title: '', content: '', stream_id: '' })
 
+  const { activeWorkspace } = useWorkspace()
+
   const load = useCallback(async () => {
-    const [p, s] = await Promise.all([getPages(), getStreams()])
+    const [p, s] = await Promise.all([getPages(undefined, activeWorkspace?.id), getStreams(false, activeWorkspace?.id)])
     setPages(p)
     setStreams(s)
-  }, [])
+  }, [activeWorkspace?.id])
 
   useEffect(() => { load() }, [load])
 
@@ -56,6 +59,7 @@ export default function KnowledgePage() {
       title: (fd.get('title') as string).trim(),
       content: '',
       stream_id: (fd.get('stream_id') as string) || null,
+      workspace_id: activeWorkspace?.id ?? null,
     })
     setShowNew(false)
     load()

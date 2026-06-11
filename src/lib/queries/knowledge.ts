@@ -1,13 +1,14 @@
 import { createClient } from '@/lib/supabase/client'
 import type { KnowledgePage } from '@/types'
 
-export async function getPages(streamId?: string) {
+export async function getPages(streamId?: string, workspaceId?: string) {
   const supabase = createClient()
   let q = supabase
     .from('knowledge_pages')
     .select('*, stream:work_streams(id,name,color)')
     .order('updated_at', { ascending: false })
   if (streamId) q = q.eq('stream_id', streamId)
+  if (workspaceId) q = q.eq('workspace_id', workspaceId)
   const { data, error } = await q
   if (error) throw error
   return data as KnowledgePage[]
@@ -21,7 +22,7 @@ export async function getPage(id: string) {
   return data as KnowledgePage
 }
 
-export async function createPage(p: Pick<KnowledgePage, 'title' | 'content' | 'stream_id'>) {
+export async function createPage(p: Pick<KnowledgePage, 'title' | 'content' | 'stream_id'> & { workspace_id?: string | null }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')

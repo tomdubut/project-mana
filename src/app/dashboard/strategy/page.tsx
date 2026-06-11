@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
 import { cn, STREAM_COLORS, formatDate, daysUntil } from '@/lib/utils'
+import { useWorkspace } from '@/lib/workspace-context'
 import type { WorkStream, Goal } from '@/types'
 import Link from 'next/link'
 
@@ -23,13 +24,15 @@ export default function StrategyPage() {
   const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set())
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
 
+  const { activeWorkspace } = useWorkspace()
+
   const load = useCallback(async () => {
-    const [g, s] = await Promise.all([getGoals(), getStreams()])
+    const [g, s] = await Promise.all([getGoals(activeWorkspace?.id), getStreams(false, activeWorkspace?.id)])
     setGoals(g)
     setStreams(s)
     // Expand all goals by default
     setExpandedGoals(new Set(g.map((goal) => goal.id)))
-  }, [])
+  }, [activeWorkspace?.id])
 
   useEffect(() => { load() }, [load])
 
@@ -191,6 +194,7 @@ export default function StrategyPage() {
       {/* Modals */}
       <Modal open={showNewGoal} onClose={() => setShowNewGoal(false)} title="New goal">
         <GoalForm
+          workspaceId={activeWorkspace?.id}
           onSuccess={() => { setShowNewGoal(false); load() }}
           onCancel={() => setShowNewGoal(false)}
         />
@@ -199,6 +203,7 @@ export default function StrategyPage() {
         {editGoal && (
           <GoalForm
             goal={editGoal}
+            workspaceId={activeWorkspace?.id}
             onSuccess={() => { setEditGoal(null); load() }}
             onCancel={() => setEditGoal(null)}
           />
@@ -208,6 +213,7 @@ export default function StrategyPage() {
         <StreamForm
           goals={goals}
           defaultGoalId={newStreamGoalId}
+          workspaceId={activeWorkspace?.id}
           onSuccess={() => { setShowNewStream(false); load() }}
           onCancel={() => setShowNewStream(false)}
         />
@@ -217,6 +223,7 @@ export default function StrategyPage() {
           <StreamForm
             stream={editStream}
             goals={goals}
+            workspaceId={activeWorkspace?.id}
             onSuccess={() => { setEditStream(null); load() }}
             onCancel={() => setEditStream(null)}
           />
@@ -262,7 +269,7 @@ function StreamRow({ stream, menuOpen, onToggleMenu, onCloseMenu, onEdit, onDele
 }
 
 // ── Goal Form ─────────────────────────────────────────────
-function GoalForm({ goal, onSuccess, onCancel }: { goal?: Goal; onSuccess: () => void; onCancel: () => void }) {
+function GoalForm({ goal, workspaceId, onSuccess, onCancel }: { goal?: Goal; workspaceId?: string; onSuccess: () => void; onCancel: () => void }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({
@@ -278,7 +285,7 @@ function GoalForm({ goal, onSuccess, onCancel }: { goal?: Goal; onSuccess: () =>
     try {
       const payload = { title: form.title.trim(), description: form.description || null, target_date: form.target_date || null }
       if (goal) await updateGoal(goal.id, payload)
-      else await createGoal(payload)
+      else await createGoal({ ...payload, workspace_id: workspaceId ?? null })
       onSuccess()
     } catch (err: any) { setError(err.message) } finally { setLoading(false) }
   }
@@ -308,8 +315,8 @@ function GoalForm({ goal, onSuccess, onCancel }: { goal?: Goal; onSuccess: () =>
 }
 
 // ── Stream Form ───────────────────────────────────────────
-function StreamForm({ stream, goals, defaultGoalId, onSuccess, onCancel }: {
-  stream?: WorkStream; goals: Goal[]; defaultGoalId?: string | null
+function StreamForm({ stream, goals, defaultGoalId, workspaceId, onSuccess, onCancel }: {
+  stream?: WorkStream; goals: Goal[]; defaultGoalId?: string | null; workspaceId?: string
   onSuccess: () => void; onCancel: () => void
 }) {
   const [loading, setLoading] = useState(false)
@@ -337,7 +344,7 @@ function StreamForm({ stream, goals, defaultGoalId, onSuccess, onCancel }: {
         goal_id: form.goal_id || null,
       }
       if (stream) await updateStream(stream.id, payload)
-      else await createStream(payload)
+      else await createStream({ ...payload, workspace_id: workspaceId ?? null })
       onSuccess()
     } catch (err: any) { setError(err.message) } finally { setLoading(false) }
   }

@@ -8,6 +8,7 @@ import { getGoals } from '@/lib/queries/goals'
 import { Button } from '@/components/ui/button'
 import { cn, PRIORITY_CONFIG, STATUS_CONFIG, formatDate, isOverdue } from '@/lib/utils'
 import { TaskPanel } from '@/components/tasks/task-panel'
+import { useWorkspace } from '@/lib/workspace-context'
 import type { Task, WorkStream, Goal } from '@/types'
 
 interface FocusItem {
@@ -25,11 +26,13 @@ export default function TodoPage() {
   const [scoreError, setScoreError] = useState('')
   const [loading, setLoading] = useState(true)
 
+  const { activeWorkspace } = useWorkspace()
+
   const load = useCallback(async () => {
     const [tasks, s, g] = await Promise.all([
-      getTasks({ openOnly: true }),
-      getStreams(),
-      getGoals(),
+      getTasks({ openOnly: true, workspaceId: activeWorkspace?.id }),
+      getStreams(false, activeWorkspace?.id),
+      getGoals(activeWorkspace?.id),
     ])
     setAllOpen(tasks)
     setStreams(s)
@@ -45,7 +48,7 @@ export default function TodoPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load() }, [load, activeWorkspace?.id])
 
   async function runAiScore() {
     setScoring(true)

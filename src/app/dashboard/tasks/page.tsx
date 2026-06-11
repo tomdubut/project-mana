@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { TaskPanel } from '@/components/tasks/task-panel'
 import { cn, PRIORITY_CONFIG, STATUS_CONFIG, formatDate, isOverdue } from '@/lib/utils'
+import { useWorkspace } from '@/lib/workspace-context'
 import type { Task, WorkStream, Goal, TaskStatus, TaskPriority } from '@/types'
 import { Suspense } from 'react'
 
@@ -29,12 +30,18 @@ function TasksInner() {
   const [adding, setAdding] = useState(false)
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
 
+  const { activeWorkspace } = useWorkspace()
+
   const load = useCallback(async () => {
-    const [t, s, g] = await Promise.all([getTasks(), getStreams(), getGoals()])
+    const [t, s, g] = await Promise.all([
+      getTasks({ workspaceId: activeWorkspace?.id }),
+      getStreams(false, activeWorkspace?.id),
+      getGoals(activeWorkspace?.id),
+    ])
     setTasks(t)
     setStreams(s)
     setGoals(g)
-  }, [])
+  }, [activeWorkspace?.id])
 
   useEffect(() => { load() }, [load])
   useEffect(() => { setFilterStream(streamFilter ?? '') }, [streamFilter])
@@ -62,6 +69,7 @@ function TasksInner() {
       due_date: null,
       ai_score: null,
       ai_reason: null,
+      workspace_id: activeWorkspace?.id ?? null,
     })
     setQuickTitle('')
     setAdding(false)
