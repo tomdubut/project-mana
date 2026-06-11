@@ -10,7 +10,6 @@ import type { Task, WorkStream, TaskStatus, TaskPriority } from '@/types'
 interface TaskFormProps {
   task?: Task
   streams: WorkStream[]
-  goals?: Goal[]
   onSuccess: () => void
   onCancel: () => void
 }
