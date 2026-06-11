@@ -14,7 +14,7 @@ interface TaskFormProps {
   onCancel: () => void
 }
 
-export function TaskForm({ task, streams, goals, onSuccess, onCancel }: TaskFormProps) {
+export function TaskForm({ task, streams, onSuccess, onCancel }: TaskFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({
