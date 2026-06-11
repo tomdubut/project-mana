@@ -1,16 +1,17 @@
 import { createClient } from '@/lib/supabase/client'
 import type { WorkStream } from '@/types'
 
-export async function getStreams(includeArchived = false) {
+export async function getStreams(includeArchived = false, workspaceId?: string) {
   const supabase = createClient()
   let q = supabase.from('work_streams').select('*, goal:goals(id,title)').order('name')
   if (!includeArchived) q = q.eq('archived', false)
+  if (workspaceId) q = q.eq('workspace_id', workspaceId)
   const { data, error } = await q
   if (error) throw error
   return data as WorkStream[]
 }
 
-export async function createStream(s: Pick<WorkStream, 'name' | 'description' | 'color' | 'is_ongoing' | 'deadline' | 'goal_id'>) {
+export async function createStream(s: Pick<WorkStream, 'name' | 'description' | 'color' | 'is_ongoing' | 'deadline' | 'goal_id'> & { workspace_id?: string | null }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')

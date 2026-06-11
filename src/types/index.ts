@@ -62,6 +62,15 @@ export interface KnowledgePage {
   stream?: WorkStream | null
 }
 
+export interface Workspace {
+  id: string
+  user_id: string
+  name: string
+  color: string
+  created_at: string
+  updated_at: string
+}
+
 export interface ApiToken {
   id: string
   user_id: string

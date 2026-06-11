@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useSearchParams, useRouter } from 'next/navigation'
-import { ListTodo, CheckSquare, BarChart2, BookOpen, Settings, LogOut, Zap, Plus, ChevronDown, ChevronRight, Layers } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { usePathname, useRouter } from 'next/navigation'
+import { ListTodo, CheckSquare, BarChart2, BookOpen, Settings, LogOut, Zap, Plus, ChevronDown, ChevronRight, Layers, Check } from 'lucide-react'
+import { cn, STREAM_COLORS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import type { WorkStream } from '@/types'
 import { getStreams } from '@/lib/queries/streams'
+import { useWorkspace } from '@/lib/workspace-context'
 
 const VIEWS = [
   { key: 'todo',     label: 'To-Do List',  icon: ListTodo  },
@@ -21,15 +22,36 @@ export function Sidebar() {
   const router = useRouter()
   const [streams, setStreams] = useState<WorkStream[]>([])
   const [streamsOpen, setStreamsOpen] = useState(true)
+  const [wsMenuOpen, setWsMenuOpen] = useState(false)
+  const [showNewWs, setShowNewWs] = useState(false)
+  const [newWsName, setNewWsName] = useState('')
+  const [newWsColor, setNewWsColor] = useState(STREAM_COLORS[0])
+  const [creating, setCreating] = useState(false)
+
+  const { workspaces, activeWorkspace, setActiveWorkspaceId, createAndSwitch } = useWorkspace()
 
   useEffect(() => {
     getStreams().then(setStreams).catch(() => {})
-  }, [pathname]) // refresh when navigating (new stream created elsewhere)
+  }, [pathname])
 
   async function handleSignOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/login')
+  }
+
+  async function handleCreateWorkspace(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newWsName.trim()) return
+    setCreating(true)
+    try {
+      await createAndSwitch(newWsName.trim(), newWsColor)
+      setNewWsName('')
+      setNewWsColor(STREAM_COLORS[0])
+      setShowNewWs(false)
+      setWsMenuOpen(false)
+    } catch {}
+    setCreating(false)
   }
 
   const currentView = VIEWS.find((v) => pathname.endsWith(v.key))?.key ?? 'todo'
@@ -52,6 +74,89 @@ export function Sidebar() {
           </div>
           <span className="font-bold text-gray-900 text-sm tracking-tight">ProjectMana</span>
         </div>
+      </div>
+
+      {/* Workspace switcher */}
+      <div className="px-2 py-2 border-b border-gray-100 relative">
+        <button
+          onClick={() => { setWsMenuOpen(!wsMenuOpen); setShowNewWs(false) }}
+          className="flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className="w-3 h-3 rounded-full flex-shrink-0"
+              style={{ backgroundColor: activeWorkspace?.color ?? '#6366f1' }}
+            />
+            <span className="truncate">{activeWorkspace?.name ?? 'No workspace'}</span>
+          </div>
+          <ChevronDown size={14} className={cn('flex-shrink-0 text-gray-400 transition-transform', wsMenuOpen && 'rotate-180')} />
+        </button>
+
+        {wsMenuOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => { setWsMenuOpen(false); setShowNewWs(false) }} />
+            <div className="absolute left-2 right-2 top-full mt-1 z-20 bg-white border border-gray-100 shadow-lg rounded-xl py-1 overflow-hidden">
+              {workspaces.map((ws) => (
+                <button
+                  key={ws.id}
+                  onClick={() => { setActiveWorkspaceId(ws.id); setWsMenuOpen(false) }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: ws.color }} />
+                  <span className="flex-1 text-left truncate">{ws.name}</span>
+                  {activeWorkspace?.id === ws.id && <Check size={13} className="text-indigo-600 flex-shrink-0" />}
+                </button>
+              ))}
+              <div className="border-t border-gray-50 mt-1 pt-1">
+                {showNewWs ? (
+                  <form onSubmit={handleCreateWorkspace} className="px-3 py-2 space-y-2">
+                    <input
+                      autoFocus
+                      value={newWsName}
+                      onChange={(e) => setNewWsName(e.target.value)}
+                      placeholder="Workspace name"
+                      className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-400"
+                    />
+                    <div className="flex gap-1.5 flex-wrap">
+                      {STREAM_COLORS.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => setNewWsColor(color)}
+                          className={cn('w-5 h-5 rounded-full transition-transform', newWsColor === color && 'ring-2 ring-offset-1 ring-gray-400 scale-110')}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowNewWs(false)}
+                        className="flex-1 text-xs py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={creating || !newWsName.trim()}
+                        className="flex-1 text-xs py-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                      >
+                        {creating ? 'Creating…' : 'Create'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <button
+                    onClick={() => setShowNewWs(true)}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-400 hover:text-indigo-600 hover:bg-gray-50 transition-colors"
+                  >
+                    <Plus size={12} /> New workspace
+                  </button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Main nav */}

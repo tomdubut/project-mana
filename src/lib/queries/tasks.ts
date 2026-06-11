@@ -9,20 +9,22 @@ export async function getTasks(filters?: {
   status?: TaskStatus
   priority?: TaskPriority
   openOnly?: boolean
+  workspaceId?: string
 }) {
   const supabase = createClient()
   let q = supabase.from('tasks').select(SELECT).order('created_at', { ascending: false })
   if (filters?.streamId !== undefined) q = q.eq('stream_id', filters.streamId)
-  if (filters?.goalId)   q = q.eq('goal_id', filters.goalId)
-  if (filters?.status)   q = q.eq('status', filters.status)
-  if (filters?.priority) q = q.eq('priority', filters.priority)
-  if (filters?.openOnly) q = q.in('status', ['todo', 'in_progress', 'blocked'])
+  if (filters?.goalId)     q = q.eq('goal_id', filters.goalId)
+  if (filters?.status)     q = q.eq('status', filters.status)
+  if (filters?.priority)   q = q.eq('priority', filters.priority)
+  if (filters?.openOnly)   q = q.in('status', ['todo', 'in_progress', 'blocked'])
+  if (filters?.workspaceId) q = q.eq('workspace_id', filters.workspaceId)
   const { data, error } = await q
   if (error) throw error
   return data as Task[]
 }
 
-export async function createTask(t: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'completed_at' | 'stream' | 'goal'>) {
+export async function createTask(t: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'completed_at' | 'stream' | 'goal'> & { workspace_id?: string | null }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
