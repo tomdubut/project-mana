@@ -23,6 +23,7 @@ export function Sidebar() {
   const [streams, setStreams] = useState<WorkStream[]>([])
   const [streamsOpen, setStreamsOpen] = useState(true)
   const [wsMenuOpen, setWsMenuOpen] = useState(false)
+  const [mobileWsOpen, setMobileWsOpen] = useState(false)
   const [showNewWs, setShowNewWs] = useState(false)
   const [newWsName, setNewWsName] = useState('')
   const [newWsColor, setNewWsColor] = useState(STREAM_COLORS[0])
@@ -249,6 +250,16 @@ export function Sidebar() {
           {label}
         </Link>
       ))}
+      <button
+        onClick={() => { setMobileWsOpen(true); setShowNewWs(false) }}
+        className="flex-1 flex flex-col items-center justify-center py-2 gap-1 text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors"
+      >
+        <span
+          className="w-5 h-5 rounded-full border-2 border-gray-300"
+          style={{ backgroundColor: activeWorkspace?.color ?? '#6366f1' }}
+        />
+        <span className="truncate max-w-[52px]">{activeWorkspace?.name ?? 'WS'}</span>
+      </button>
       <Link
         href="/dashboard/settings"
         className={cn(
@@ -262,6 +273,69 @@ export function Sidebar() {
         Settings
       </Link>
     </nav>
+
+    {/* Mobile workspace bottom sheet */}
+    {mobileWsOpen && (
+      <>
+        <div className="fixed inset-0 z-50 bg-black/40 md:hidden" onClick={() => { setMobileWsOpen(false); setShowNewWs(false) }} />
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl md:hidden">
+          <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-gray-100">
+            <span className="text-sm font-semibold text-gray-900">Switch Workspace</span>
+            <button onClick={() => { setMobileWsOpen(false); setShowNewWs(false) }} className="text-gray-400 hover:text-gray-600 p-1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div className="px-2 py-2 space-y-0.5 max-h-64 overflow-y-auto">
+            {workspaces.map((ws) => (
+              <button
+                key={ws.id}
+                onClick={() => { setActiveWorkspaceId(ws.id); setMobileWsOpen(false) }}
+                className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: ws.color }} />
+                <span className="flex-1 text-left font-medium">{ws.name}</span>
+                {activeWorkspace?.id === ws.id && <Check size={15} className="text-indigo-600 flex-shrink-0" />}
+              </button>
+            ))}
+          </div>
+          <div className="px-2 pb-4 pt-1 border-t border-gray-50">
+            {showNewWs ? (
+              <form onSubmit={handleCreateWorkspace} className="px-3 py-2 space-y-2">
+                <input
+                  autoFocus
+                  value={newWsName}
+                  onChange={(e) => setNewWsName(e.target.value)}
+                  placeholder="Workspace name"
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-400"
+                />
+                <div className="flex gap-2 flex-wrap">
+                  {STREAM_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setNewWsColor(color)}
+                      className={cn('w-6 h-6 rounded-full transition-transform', newWsColor === color && 'ring-2 ring-offset-1 ring-gray-400 scale-110')}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setShowNewWs(false)} className="flex-1 py-2 text-sm rounded-xl border border-gray-200 text-gray-500">Cancel</button>
+                  <button type="submit" disabled={creating || !newWsName.trim()} className="flex-1 py-2 text-sm rounded-xl bg-indigo-600 text-white disabled:opacity-50">{creating ? 'Creating…' : 'Create'}</button>
+                </div>
+              </form>
+            ) : (
+              <button
+                onClick={() => setShowNewWs(true)}
+                className="flex items-center gap-2 w-full px-3 py-3 text-sm text-gray-400 hover:text-indigo-600 hover:bg-gray-50 rounded-xl transition-colors"
+              >
+                <Plus size={14} /> New workspace
+              </button>
+            )}
+          </div>
+        </div>
+      </>
+    )}
     </>
   )
 }
