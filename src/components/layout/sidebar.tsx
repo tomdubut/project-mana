@@ -194,7 +194,7 @@ export function Sidebar() {
             {streams.map((s) => (
               <Link
                 key={s.id}
-                href={`/dashboard/tasks?stream=${s.id}`}
+                href={`/dashboard/streams/${s.id}`}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
               >
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />

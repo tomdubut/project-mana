@@ -245,7 +245,7 @@ function StreamRow({ stream, menuOpen, onToggleMenu, onCloseMenu, onEdit, onDele
       <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: stream.color }} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-800 truncate">{stream.name}</span>
+          <Link href={`/dashboard/streams/${stream.id}`} className="text-sm font-medium text-gray-800 truncate hover:text-indigo-600 transition-colors">{stream.name}</Link>
           <span className={cn(
             'text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0',
             stream.is_ongoing ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'
@@ -260,8 +260,8 @@ function StreamRow({ stream, menuOpen, onToggleMenu, onCloseMenu, onEdit, onDele
         </div>
         {stream.description && <p className="text-xs text-gray-400 truncate mt-0.5">{stream.description}</p>}
       </div>
-      <Link href={`/dashboard/tasks?stream=${stream.id}`} className="opacity-0 group-hover:opacity-100 text-xs text-indigo-500 hover:underline flex items-center gap-1 flex-shrink-0 transition-all">
-        Tasks <ExternalLink size={10} />
+      <Link href={`/dashboard/streams/${stream.id}`} className="opacity-0 group-hover:opacity-100 text-xs text-indigo-500 hover:text-indigo-700 flex items-center gap-1 flex-shrink-0 transition-all">
+        Open <ExternalLink size={10} />
       </Link>
       <RowMenu id={stream.id} open={menuOpen} onToggle={onToggleMenu} onClose={onCloseMenu} onEdit={onEdit} onDelete={onDelete} />
     </div>
