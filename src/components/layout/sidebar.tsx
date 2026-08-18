@@ -202,34 +202,65 @@ export function Sidebar() {
         </button>
 
         {streamsOpen && (
-          <div className="space-y-0.5 mt-1">
-            {streams.map((s) => {
-              const isActive = pathname.includes(`/streams/${s.id}`)
-              const count = taskCounts[s.id] ?? 0
-              return (
-                <Link
-                  key={s.id}
-                  href={`/dashboard/streams/${s.id}`}
-                  className={cn(
-                    'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          <div className="mt-1">
+            {(() => {
+              // Group streams by goal
+              const groups: { goalId: string | null; goalTitle: string | null; streams: WorkStream[] }[] = []
+              const seen = new Set<string | null>()
+              for (const s of streams) {
+                const goalId = (s as any).goal?.id ?? null
+                const goalTitle = (s as any).goal?.title ?? null
+                if (!seen.has(goalId)) {
+                  seen.add(goalId)
+                  groups.push({ goalId, goalTitle, streams: [] })
+                }
+                groups.find(g => g.goalId === goalId)!.streams.push(s)
+              }
+              // Goals first, ungrouped last
+              groups.sort((a, b) => {
+                if (a.goalId === null) return 1
+                if (b.goalId === null) return -1
+                return 0
+              })
+              return groups.map(({ goalId, goalTitle, streams: groupStreams }) => (
+                <div key={goalId ?? '__none__'} className="mb-2">
+                  {goalTitle && (
+                    <p className="px-3 pt-1 pb-0.5 text-xs text-gray-400 font-medium truncate" title={goalTitle}>
+                      {goalTitle}
+                    </p>
                   )}
-                >
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-                  <span className="truncate flex-1">{s.name}</span>
-                  {count > 0 && (
-                    <span className={cn(
-                      'text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0',
-                      isActive ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
-                    )}>
-                      {count}
-                    </span>
-                  )}
-                </Link>
-              )
-            })}
+                  <div className="space-y-0.5">
+                    {groupStreams.map((s) => {
+                      const isActive = pathname.includes(`/streams/${s.id}`)
+                      const count = taskCounts[s.id] ?? 0
+                      return (
+                        <Link
+                          key={s.id}
+                          href={`/dashboard/streams/${s.id}`}
+                          className={cn(
+                            'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                            isActive
+                              ? 'bg-indigo-50 text-indigo-700'
+                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          )}
+                        >
+                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                          <span className="truncate flex-1">{s.name}</span>
+                          {count > 0 && (
+                            <span className={cn(
+                              'text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0',
+                              isActive ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
+                            )}>
+                              {count}
+                            </span>
+                          )}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))
+            })()}
             <Link
               href="/dashboard/strategy"
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-indigo-600 transition-colors"
