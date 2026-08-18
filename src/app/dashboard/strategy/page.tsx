@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Target, Layers, MoreHorizontal, Pencil, Trash2, Calendar, ExternalLink, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Target, Layers, MoreHorizontal, Pencil, Trash2, Calendar, ExternalLink, ChevronDown, ChevronRight, Archive, ArchiveRestore } from 'lucide-react'
 import { getGoals, createGoal, updateGoal, deleteGoal } from '@/lib/queries/goals'
 import { getStreams, createStream, updateStream, deleteStream } from '@/lib/queries/streams'
 import { Button } from '@/components/ui/button'
@@ -23,14 +23,20 @@ export default function StrategyPage() {
   const [newStreamGoalId, setNewStreamGoalId] = useState<string | null>(null)
   const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set())
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
+  const [archivedStreams, setArchivedStreams] = useState<WorkStream[]>([])
+  const [showArchived, setShowArchived] = useState(false)
 
   const { activeWorkspace } = useWorkspace()
 
   const load = useCallback(async () => {
-    const [g, s] = await Promise.all([getGoals(activeWorkspace?.id), getStreams(false, activeWorkspace?.id)])
+    const [g, s, archived] = await Promise.all([
+      getGoals(activeWorkspace?.id),
+      getStreams(false, activeWorkspace?.id),
+      getStreams(true, activeWorkspace?.id),
+    ])
     setGoals(g)
     setStreams(s)
-    // Expand all goals by default
+    setArchivedStreams(archived.filter((s) => s.archived))
     setExpandedGoals(new Set(g.map((goal) => goal.id)))
   }, [activeWorkspace?.id])
 
@@ -191,6 +197,47 @@ export default function StrategyPage() {
         </div>
       )}
 
+      {/* Archived streams */}
+      {archivedStreams.length > 0 && (
+        <div className="mt-8">
+          <button
+            onClick={() => setShowArchived(!showArchived)}
+            className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors mb-2"
+          >
+            {showArchived ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            <Archive size={13} />
+            Archived streams ({archivedStreams.length})
+          </button>
+          {showArchived && (
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              {archivedStreams.map((stream) => (
+                <div key={stream.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 opacity-60 hover:opacity-100 transition-opacity">
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: stream.color }} />
+                  <span className="text-sm text-gray-700 flex-1 truncate">{stream.name}</span>
+                  {(stream as any).goal?.title && (
+                    <span className="text-xs text-gray-400 truncate max-w-[120px]">{(stream as any).goal.title}</span>
+                  )}
+                  <button
+                    onClick={async () => { await updateStream(stream.id, { archived: false }); load() }}
+                    className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors flex-shrink-0"
+                    title="Unarchive"
+                  >
+                    <ArchiveRestore size={13} /> Unarchive
+                  </button>
+                  <button
+                    onClick={async () => { if (!confirm('Delete this stream?')) return; await deleteStream(stream.id); load() }}
+                    className="text-gray-300 hover:text-red-500 p-1 rounded transition-colors flex-shrink-0"
+                    title="Delete"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Modals */}
       <Modal open={showNewGoal} onClose={() => setShowNewGoal(false)} title="New goal">
         <GoalForm
@@ -233,7 +280,7 @@ export default function StrategyPage() {
   )
 }
 
-// ── Stream row ────────────────────────────────────────────
+// ── Stream row ───────────────────────────────────────────────
 function StreamRow({ stream, menuOpen, onToggleMenu, onCloseMenu, onEdit, onDelete }: {
   stream: WorkStream
   menuOpen: boolean; onToggleMenu: () => void; onCloseMenu: () => void
@@ -268,7 +315,7 @@ function StreamRow({ stream, menuOpen, onToggleMenu, onCloseMenu, onEdit, onDele
   )
 }
 
-// ── Goal Form ─────────────────────────────────────────────
+// ── Goal Form ───────────────────────────────────────────────
 function GoalForm({ goal, workspaceId, onSuccess, onCancel }: { goal?: Goal; workspaceId?: string; onSuccess: () => void; onCancel: () => void }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -314,7 +361,7 @@ function GoalForm({ goal, workspaceId, onSuccess, onCancel }: { goal?: Goal; wor
   )
 }
 
-// ── Stream Form ───────────────────────────────────────────
+// ── Stream Form ───────────────────────────────────────────────
 function StreamForm({ stream, goals, defaultGoalId, workspaceId, onSuccess, onCancel }: {
   stream?: WorkStream; goals: Goal[]; defaultGoalId?: string | null; workspaceId?: string
   onSuccess: () => void; onCancel: () => void

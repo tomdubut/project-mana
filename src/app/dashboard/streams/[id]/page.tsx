@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import {
   ArrowLeft, Plus, Circle, CheckCircle2, Clock, Sparkles,
   MoreHorizontal, Pencil, Trash2, BookOpen, Target, AlertTriangle,
-  ExternalLink, Check,
+  ExternalLink, Archive,
 } from 'lucide-react'
 import Link from 'next/link'
 import { getStreams, updateStream, deleteStream } from '@/lib/queries/streams'
@@ -103,6 +103,12 @@ export default function StreamDetailPage() {
     load()
   }
 
+  async function handleArchiveStream() {
+    if (!stream) return
+    await updateStream(stream.id, { archived: true })
+    router.push('/dashboard/strategy')
+  }
+
   async function handleDeleteStream() {
     if (!stream) return
     if (!confirm(`Delete stream "${stream.name}"? This won't delete its tasks.`)) return
@@ -155,10 +161,13 @@ export default function StreamDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={() => setEditing(true)} className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+            <button onClick={() => setEditing(true)} className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Rename">
               <Pencil size={14} />
             </button>
-            <button onClick={handleDeleteStream} className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors">
+            <button onClick={handleArchiveStream} className="text-gray-400 hover:text-amber-600 p-1.5 rounded-lg hover:bg-amber-50 transition-colors" title="Archive stream">
+              <Archive size={14} />
+            </button>
+            <button onClick={handleDeleteStream} className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete stream">
               <Trash2 size={14} />
             </button>
           </div>
