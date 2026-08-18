@@ -139,8 +139,8 @@ export function TaskPanel({ task, streams, onClose, onUpdate, onDelete }: TaskPa
                     className={cn(
                       'text-xs px-2.5 py-1 rounded-full font-medium transition-all border',
                       active
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : cn(conf.color, 'border-transparent hover:border-gray-300')
+                        ? cn(conf.color, 'border-current ring-2 ring-offset-1 ring-current/30')
+                        : 'bg-gray-100 text-gray-400 border-transparent hover:bg-gray-200 hover:text-gray-600'
                     )}
                   >
                     {conf.label}
@@ -164,8 +164,8 @@ export function TaskPanel({ task, streams, onClose, onUpdate, onDelete }: TaskPa
                     className={cn(
                       'text-xs px-2.5 py-1 rounded-full font-medium transition-all border',
                       active
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : cn(conf.color, 'border-transparent hover:border-gray-300')
+                        ? cn(conf.color, 'border-current ring-2 ring-offset-1 ring-current/30')
+                        : 'bg-gray-100 text-gray-400 border-transparent hover:bg-gray-200 hover:text-gray-600'
                     )}
                   >
                     {conf.label}
