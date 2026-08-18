@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import type { WorkStream } from '@/types'
 import { getStreams } from '@/lib/queries/streams'
+import { getTasks } from '@/lib/queries/tasks'
 import { useWorkspace } from '@/lib/workspace-context'
 
 const VIEWS = [
@@ -21,6 +22,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [streams, setStreams] = useState<WorkStream[]>([])
+  const [taskCounts, setTaskCounts] = useState<Record<string, number>>({})
   const [streamsOpen, setStreamsOpen] = useState(true)
   const [wsMenuOpen, setWsMenuOpen] = useState(false)
   const [mobileWsOpen, setMobileWsOpen] = useState(false)
@@ -32,7 +34,17 @@ export function Sidebar() {
   const { workspaces, activeWorkspace, setActiveWorkspaceId, createAndSwitch } = useWorkspace()
 
   useEffect(() => {
-    getStreams(false, activeWorkspace?.id).then(setStreams).catch(() => {})
+    Promise.all([
+      getStreams(false, activeWorkspace?.id),
+      getTasks({ openOnly: true, workspaceId: activeWorkspace?.id }),
+    ]).then(([s, t]) => {
+      setStreams(s)
+      const counts: Record<string, number> = {}
+      for (const task of t) {
+        if (task.stream_id) counts[task.stream_id] = (counts[task.stream_id] ?? 0) + 1
+      }
+      setTaskCounts(counts)
+    }).catch(() => {})
   }, [pathname, activeWorkspace?.id])
 
   async function handleSignOut() {
@@ -191,16 +203,33 @@ export function Sidebar() {
 
         {streamsOpen && (
           <div className="space-y-0.5 mt-1">
-            {streams.map((s) => (
-              <Link
-                key={s.id}
-                href={`/dashboard/streams/${s.id}`}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-              >
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-                <span className="truncate">{s.name}</span>
-              </Link>
-            ))}
+            {streams.map((s) => {
+              const isActive = pathname.includes(`/streams/${s.id}`)
+              const count = taskCounts[s.id] ?? 0
+              return (
+                <Link
+                  key={s.id}
+                  href={`/dashboard/streams/${s.id}`}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  )}
+                >
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                  <span className="truncate flex-1">{s.name}</span>
+                  {count > 0 && (
+                    <span className={cn(
+                      'text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0',
+                      isActive ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
+                    )}>
+                      {count}
+                    </span>
+                  )}
+                </Link>
+              )
+            })}
             <Link
               href="/dashboard/strategy"
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-indigo-600 transition-colors"
