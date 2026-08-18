@@ -134,7 +134,15 @@ export default function StrategyPage() {
                     onToggle={() => setMenuOpen(menuOpen === goal.id ? null : goal.id)}
                     onClose={() => setMenuOpen(null)}
                     onEdit={() => { setEditGoal(goal); setMenuOpen(null) }}
-                    onArchive={async () => { await updateGoal(goal.id, { archived: true }); setMenuOpen(null); load() }}
+                    onArchive={async () => {
+                      const goalStreams = streams.filter((s) => s.goal_id === goal.id)
+                      await Promise.all([
+                        updateGoal(goal.id, { archived: true }),
+                        ...goalStreams.map((s) => updateStream(s.id, { archived: true })),
+                      ])
+                      setMenuOpen(null)
+                      load()
+                    }}
                     onDelete={async () => {
                       if (!confirm('Delete this goal? Streams linked to it will become standalone.')) return
                       await deleteGoal(goal.id)
