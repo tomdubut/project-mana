@@ -1,13 +1,13 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Goal } from '@/types'
 
-export async function getGoals(workspaceId?: string) {
+export async function getGoals(workspaceId?: string, includeArchived = false) {
   const supabase = createClient()
   let q = supabase
     .from('goals')
     .select('*, streams:work_streams(id,name,color,is_ongoing,deadline,tasks(id,status)), tasks(id,status)')
-    .eq('archived', false)
     .order('created_at', { ascending: false })
+  if (!includeArchived) q = q.eq('archived', false)
   if (workspaceId) q = q.eq('workspace_id', workspaceId)
   const { data, error } = await q
   if (error) throw error

@@ -25,16 +25,20 @@ export default function StrategyPage() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
   const [archivedStreams, setArchivedStreams] = useState<WorkStream[]>([])
   const [showArchived, setShowArchived] = useState(false)
+  const [archivedGoals, setArchivedGoals] = useState<Goal[]>([])
+  const [showArchivedGoals, setShowArchivedGoals] = useState(false)
 
   const { activeWorkspace } = useWorkspace()
 
   const load = useCallback(async () => {
-    const [g, s, archived] = await Promise.all([
+    const [g, allGoals, s, archived] = await Promise.all([
       getGoals(activeWorkspace?.id),
+      getGoals(activeWorkspace?.id, true),
       getStreams(false, activeWorkspace?.id),
       getStreams(true, activeWorkspace?.id),
     ])
     setGoals(g)
+    setArchivedGoals(allGoals.filter((goal) => goal.archived))
     setStreams(s)
     setArchivedStreams(archived.filter((s) => s.archived))
     setExpandedGoals(new Set(g.map((goal) => goal.id)))
@@ -130,6 +134,7 @@ export default function StrategyPage() {
                     onToggle={() => setMenuOpen(menuOpen === goal.id ? null : goal.id)}
                     onClose={() => setMenuOpen(null)}
                     onEdit={() => { setEditGoal(goal); setMenuOpen(null) }}
+                    onArchive={async () => { await updateGoal(goal.id, { archived: true }); setMenuOpen(null); load() }}
                     onDelete={async () => {
                       if (!confirm('Delete this goal? Streams linked to it will become standalone.')) return
                       await deleteGoal(goal.id)
@@ -226,6 +231,47 @@ export default function StrategyPage() {
                   </button>
                   <button
                     onClick={async () => { if (!confirm('Delete this stream?')) return; await deleteStream(stream.id); load() }}
+                    className="text-gray-300 hover:text-red-500 p-1 rounded transition-colors flex-shrink-0"
+                    title="Delete"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Archived goals */}
+      {archivedGoals.length > 0 && (
+        <div className="mt-4">
+          <button
+            onClick={() => setShowArchivedGoals(!showArchivedGoals)}
+            className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors mb-2"
+          >
+            {showArchivedGoals ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            <Archive size={13} />
+            Archived goals ({archivedGoals.length})
+          </button>
+          {showArchivedGoals && (
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              {archivedGoals.map((goal) => (
+                <div key={goal.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 opacity-60 hover:opacity-100 transition-opacity">
+                  <Target size={14} className="text-indigo-300 flex-shrink-0" />
+                  <span className="text-sm text-gray-700 flex-1 truncate">{goal.title}</span>
+                  {goal.target_date && (
+                    <span className="text-xs text-gray-400 flex-shrink-0">{formatDate(goal.target_date)}</span>
+                  )}
+                  <button
+                    onClick={async () => { await updateGoal(goal.id, { archived: false }); load() }}
+                    className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors flex-shrink-0"
+                    title="Unarchive"
+                  >
+                    <ArchiveRestore size={13} /> Unarchive
+                  </button>
+                  <button
+                    onClick={async () => { if (!confirm('Delete this goal? Streams linked to it will become standalone.')) return; await deleteGoal(goal.id); load() }}
                     className="text-gray-300 hover:text-red-500 p-1 rounded transition-colors flex-shrink-0"
                     title="Delete"
                   >
@@ -447,9 +493,9 @@ function StreamForm({ stream, goals, defaultGoalId, workspaceId, onSuccess, onCa
 }
 
 // ── Shared ────────────────────────────────────────────────
-function RowMenu({ id, open, onToggle, onClose, onEdit, onDelete }: {
+function RowMenu({ id, open, onToggle, onClose, onEdit, onArchive, onDelete }: {
   id: string; open: boolean; onToggle: () => void; onClose: () => void
-  onEdit: () => void; onDelete: () => void
+  onEdit: () => void; onArchive?: () => void; onDelete: () => void
 }) {
   return (
     <div className="relative flex-shrink-0">
@@ -459,8 +505,11 @@ function RowMenu({ id, open, onToggle, onClose, onEdit, onDelete }: {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={onClose} />
-          <div className="absolute right-0 top-7 z-20 bg-white border border-gray-100 shadow-lg rounded-lg py-1 w-32">
+          <div className="absolute right-0 top-7 z-20 bg-white border border-gray-100 shadow-lg rounded-lg py-1 w-36">
             <button onClick={onEdit} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Pencil size={12} /> Edit</button>
+            {onArchive && (
+              <button onClick={onArchive} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-amber-600 hover:bg-amber-50"><Archive size={12} /> Archive</button>
+            )}
             <button onClick={onDelete} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"><Trash2 size={12} /> Delete</button>
           </div>
         </>
