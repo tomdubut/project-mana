@@ -286,7 +286,7 @@ export default function StreamDetailPage() {
         task={panelTask}
         streams={[stream]}
         onClose={() => setPanelTask(null)}
-        onUpdate={async (taskId, updates) => { await updateTask(taskId, updates); load() }}
+        onUpdate={async (taskId, updates) => { await updateTask(taskId, updates); setPanelTask((prev) => prev ? { ...prev, ...updates } : null); load() }}
         onDelete={async (taskId) => { await deleteTask(taskId); load(); setPanelTask(null) }}
       />
     </div>

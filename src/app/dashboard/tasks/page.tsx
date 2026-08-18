@@ -1,59 +1,52 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { Plus, Circle, CheckCircle2, Clock, Sparkles, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import {
+  Plus, Circle, CheckCircle2, Clock, Sparkles,
+  MoreHorizontal, Pencil, Trash2, Filter,
+} from 'lucide-react'
 import { getTasks, createTask, updateTask, deleteTask } from '@/lib/queries/tasks'
 import { getStreams } from '@/lib/queries/streams'
-import { getGoals } from '@/lib/queries/goals'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
 import { TaskPanel } from '@/components/tasks/task-panel'
 import { cn, PRIORITY_CONFIG, STATUS_CONFIG, formatDate, isOverdue } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
-import type { Task, WorkStream, Goal, TaskStatus, TaskPriority } from '@/types'
-import { Suspense } from 'react'
+import type { Task, WorkStream, TaskStatus, TaskPriority } from '@/types'
 
-function TasksInner() {
-  const searchParams = useSearchParams()
-  const streamFilter = searchParams.get('stream')
+const ALL_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'blocked', 'done']
+const ALL_PRIORITIES: TaskPriority[] = ['high', 'normal', 'low']
 
+export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [streams, setStreams] = useState<WorkStream[]>([])
-  const [goals, setGoals] = useState<Goal[]>([])
-  const [filterStatus, setFilterStatus] = useState<TaskStatus | ''>('')
-  const [filterPriority, setFilterPriority] = useState<TaskPriority | ''>('')
-  const [filterStream, setFilterStream] = useState(streamFilter ?? '')
   const [panelTask, setPanelTask] = useState<Task | null>(null)
   const [quickTitle, setQuickTitle] = useState('')
   const [adding, setAdding] = useState(false)
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
+  const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all')
+  const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all')
+  const [loading, setLoading] = useState(true)
 
   const { activeWorkspace } = useWorkspace()
 
   const load = useCallback(async () => {
-    const [t, s, g] = await Promise.all([
+    const [t, s] = await Promise.all([
       getTasks({ workspaceId: activeWorkspace?.id }),
       getStreams(false, activeWorkspace?.id),
-      getGoals(activeWorkspace?.id),
     ])
     setTasks(t)
     setStreams(s)
-    setGoals(g)
+    setLoading(false)
   }, [activeWorkspace?.id])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { setFilterStream(streamFilter ?? '') }, [streamFilter])
 
   const filtered = tasks.filter((t) => {
-    if (filterStatus && t.status !== filterStatus) return false
-    if (filterPriority && t.priority !== filterPriority) return false
-    if (filterStream && t.stream_id !== filterStream) return false
+    if (filterStatus !== 'all' && t.status !== filterStatus) return false
+    if (filterPriority !== 'all' && t.priority !== filterPriority) return false
     return true
   })
-
-  const currentStream = streams.find((s) => s.id === filterStream)
 
   async function handleQuickAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -64,7 +57,7 @@ function TasksInner() {
       description: null,
       status: 'todo',
       priority: 'normal',
-      stream_id: filterStream || null,
+      stream_id: null,
       goal_id: null,
       due_date: null,
       ai_score: null,
@@ -81,114 +74,104 @@ function TasksInner() {
     load()
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(taskId: string) {
     if (!confirm('Delete this task?')) return
-    await deleteTask(id)
+    await deleteTask(taskId)
     load()
   }
 
-  const grouped = {
-    todo: filtered.filter((t) => t.status === 'todo'),
-    in_progress: filtered.filter((t) => t.status === 'in_progress'),
-    blocked: filtered.filter((t) => t.status === 'blocked'),
-    done: filtered.filter((t) => t.status === 'done'),
-  }
+  if (loading) return (
+    <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
+      <div className="text-gray-400 text-sm">Loading…</div>
+    </div>
+  )
 
   return (
     <div className={cn('transition-all duration-300 ease-in-out', panelTask ? 'sm:mr-[420px]' : '')}>
-    <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            {currentStream ? (
-              <>
-                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: currentStream.color }} />
-                {currentStream.name}
-              </>
-            ) : 'All Tasks'}
-          </h1>
-          <p className="text-sm text-gray-500 mt-0.5">{filtered.length} task{filtered.length !== 1 ? 's' : ''}</p>
+      <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-xl font-bold text-gray-900">Tasks</h1>
         </div>
+
+        {/* Quick add */}
+        <form onSubmit={handleQuickAdd} className="flex gap-2 mb-6">
+          <Input
+            value={quickTitle}
+            onChange={(e) => setQuickTitle(e.target.value)}
+            placeholder="Add a task…"
+            className="flex-1"
+          />
+          <Button type="submit" disabled={adding || !quickTitle.trim()} size="sm">
+            <Plus size={15} /> Add
+          </Button>
+        </form>
+
+        {/* Filters */}
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <Filter size={13} className="text-gray-400" />
+          <div className="flex gap-1 flex-wrap">
+            {(['all', ...ALL_STATUSES] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setFilterStatus(s)}
+                className={cn(
+                  'text-xs px-2.5 py-1 rounded-full font-medium transition-all border',
+                  filterStatus === s
+                    ? s === 'all' ? 'bg-gray-800 text-white border-gray-800' : cn(STATUS_CONFIG[s].color, 'border-current')
+                    : 'bg-gray-100 text-gray-500 border-transparent hover:bg-gray-200'
+                )}
+              >
+                {s === 'all' ? 'All' : STATUS_CONFIG[s].label}
+              </button>
+            ))}
+          </div>
+          <div className="w-px h-4 bg-gray-200" />
+          <div className="flex gap-1 flex-wrap">
+            {(['all', ...ALL_PRIORITIES] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setFilterPriority(p)}
+                className={cn(
+                  'text-xs px-2.5 py-1 rounded-full font-medium transition-all border',
+                  filterPriority === p
+                    ? p === 'all' ? 'bg-gray-800 text-white border-gray-800' : cn(PRIORITY_CONFIG[p].color, 'border-current')
+                    : 'bg-gray-100 text-gray-500 border-transparent hover:bg-gray-200'
+                )}
+              >
+                {p === 'all' ? 'All' : PRIORITY_CONFIG[p].label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Task list */}
+        {filtered.length === 0 ? (
+          <div className="text-center py-16 text-gray-400 text-sm">No tasks match.</div>
+        ) : (
+          <div className="space-y-1.5">
+            {filtered.map((task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                streams={streams}
+                menuOpen={menuOpen === task.id}
+                onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
+                onCloseMenu={() => setMenuOpen(null)}
+                onToggle={() => handleToggle(task)}
+                onOpen={() => setPanelTask(task)}
+                onEdit={() => { setPanelTask(task); setMenuOpen(null) }}
+                onDelete={() => { handleDelete(task.id); setMenuOpen(null) }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        <Select value={filterStream} onChange={(e) => setFilterStream(e.target.value)} className="w-40 text-xs">
-          <option value="">All streams</option>
-          {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </Select>
-        <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as TaskStatus | '')} className="w-36 text-xs">
-          <option value="">All statuses</option>
-          <option value="todo">To Do</option>
-          <option value="in_progress">In Progress</option>
-          <option value="blocked">Blocked</option>
-          <option value="done">Done</option>
-        </Select>
-        <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value as TaskPriority | '')} className="w-36 text-xs">
-          <option value="">All priorities</option>
-          <option value="high">High</option>
-          <option value="normal">Normal</option>
-          <option value="low">Low</option>
-        </Select>
-      </div>
-
-      {/* Quick add */}
-      <form onSubmit={handleQuickAdd} className="flex gap-2 mb-6">
-        <Input
-          value={quickTitle}
-          onChange={(e) => setQuickTitle(e.target.value)}
-          placeholder="Add a task… (press Enter)"
-          className="flex-1"
-        />
-        <Button type="submit" disabled={adding || !quickTitle.trim()} size="sm">
-          <Plus size={15} /> Add
-        </Button>
-      </form>
-
-      {/* Task groups */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 text-sm">No tasks match your filters.</div>
-      ) : (
-        <div className="space-y-6">
-          {(['in_progress', 'todo', 'blocked', 'done'] as TaskStatus[]).map((status) => {
-            const items = grouped[status]
-            if (items.length === 0) return null
-            const conf = STATUS_CONFIG[status]
-            return (
-              <section key={status}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full', conf.color)}>{conf.label}</span>
-                  <span className="text-xs text-gray-400">{items.length}</span>
-                </div>
-                <div className="space-y-1.5">
-                  {items.map((task) => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      streams={streams}
-                      menuOpen={menuOpen === task.id}
-                      onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
-                      onCloseMenu={() => setMenuOpen(null)}
-                      onToggle={() => handleToggle(task)}
-                      onOpen={() => setPanelTask(task)}
-                      onEdit={() => { setPanelTask(task); setMenuOpen(null) }}
-                      onDelete={() => { handleDelete(task.id); setMenuOpen(null) }}
-                    />
-                  ))}
-                </div>
-              </section>
-            )
-          })}
-        </div>
-      )}
-
-    </div>
       <TaskPanel
         task={panelTask}
         streams={streams}
         onClose={() => setPanelTask(null)}
-        onUpdate={async (id, updates) => { await updateTask(id, updates); load() }}
+        onUpdate={async (id, updates) => { await updateTask(id, updates); setPanelTask((prev) => prev ? { ...prev, ...updates } : null); load() }}
         onDelete={async (id) => { await deleteTask(id); load(); setPanelTask(null) }}
       />
     </div>
@@ -196,11 +179,11 @@ function TasksInner() {
 }
 
 function TaskRow({ task, streams, menuOpen, onMenu, onCloseMenu, onToggle, onOpen, onEdit, onDelete }: {
-  task: Task; streams: WorkStream[];
-  menuOpen: boolean; onMenu: () => void; onCloseMenu: () => void;
-  onToggle: () => void; onOpen: () => void; onEdit: () => void; onDelete: () => void;
+  task: Task; streams: WorkStream[]; menuOpen: boolean; onMenu: () => void; onCloseMenu: () => void
+  onToggle: () => void; onOpen: () => void; onEdit: () => void; onDelete: () => void
 }) {
   const priority = PRIORITY_CONFIG[task.priority]
+  const status = STATUS_CONFIG[task.status]
   const stream = streams.find((s) => s.id === task.stream_id)
   const overdue = isOverdue(task.due_date, task.status)
 
@@ -221,9 +204,10 @@ function TaskRow({ task, streams, menuOpen, onMenu, onCloseMenu, onToggle, onOpe
             <Sparkles size={10} />{task.ai_score}
           </span>
         )}
+        <span className={cn('text-xs px-1.5 py-0.5 rounded-full font-medium', status.color)}>{status.label}</span>
         <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium', priority.color)}>{priority.label}</span>
         {stream && (
-          <span className="text-xs text-gray-400 flex items-center gap-1 hidden sm:flex">
+          <span className="text-xs text-gray-400 flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stream.color }} />
             {stream.name}
           </span>
@@ -256,13 +240,5 @@ function TaskRow({ task, streams, menuOpen, onMenu, onCloseMenu, onToggle, onOpe
         </div>
       </div>
     </div>
-  )
-}
-
-export default function TasksPage() {
-  return (
-    <Suspense>
-      <TasksInner />
-    </Suspense>
   )
 }
