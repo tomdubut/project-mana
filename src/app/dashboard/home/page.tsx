@@ -3,16 +3,18 @@
 import { useEffect, useState, useCallback } from 'react'
 import { CheckCircle2, Circle, AlertTriangle, Clock, Layers, Target, Sparkles, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
-import { getTasks, updateTask } from '@/lib/queries/tasks'
+import { getTasks, updateTask, deleteTask } from '@/lib/queries/tasks'
 import { getStreams } from '@/lib/queries/streams'
 import { cn, PRIORITY_CONFIG, formatDate, isOverdue } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
+import { TaskPanel } from '@/components/tasks/task-panel'
 import type { Task, WorkStream } from '@/types'
 
 export default function HomePage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [streams, setStreams] = useState<WorkStream[]>([])
   const [loading, setLoading] = useState(true)
+  const [panelTask, setPanelTask] = useState<Task | null>(null)
   const { activeWorkspace } = useWorkspace()
 
   const load = useCallback(async () => {
@@ -82,6 +84,8 @@ export default function HomePage() {
   )
 
   return (
+    <>
+    <div className={cn('transition-all duration-300 ease-in-out', panelTask ? 'sm:mr-[420px]' : '')}>
     <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8 space-y-8">
 
       {/* Header */}
@@ -106,7 +110,7 @@ export default function HomePage() {
           </p>
           <div className="space-y-1.5">
             {overdue.slice(0, 4).map((task) => (
-              <TaskLine key={task.id} task={task} onToggle={() => toggleDone(task)} showDate />
+              <TaskLine key={task.id} task={task} onToggle={() => toggleDone(task)} onOpen={() => setPanelTask(task)} showDate />
             ))}
             {overdue.length > 4 && (
               <Link href="/dashboard/tasks" className="text-xs text-red-500 hover:underline">
@@ -127,9 +131,9 @@ export default function HomePage() {
           ) : (
             <div className="space-y-1.5">
               {focus.map((task, i) => (
-                <div key={task.id} className="flex items-center gap-3 px-3 py-2.5 bg-white rounded-xl border border-gray-100 hover:border-gray-200 transition-all">
+                <div key={task.id} onClick={() => setPanelTask(task)} className="flex items-center gap-3 px-3 py-2.5 bg-white rounded-xl border border-gray-100 hover:border-gray-200 transition-all cursor-pointer">
                   <span className="text-xs font-bold text-gray-300 w-4 flex-shrink-0">#{i + 1}</span>
-                  <button onClick={() => toggleDone(task)} className="flex-shrink-0 text-gray-300 hover:text-green-500 transition-colors">
+                  <button onClick={(e) => { e.stopPropagation(); toggleDone(task) }} className="flex-shrink-0 text-gray-300 hover:text-green-500 transition-colors">
                     <Circle size={16} />
                   </button>
                   <span className="text-sm text-gray-800 flex-1 truncate">{task.title}</span>
@@ -155,7 +159,7 @@ export default function HomePage() {
           ) : (
             <div className="space-y-1.5">
               {upcoming.map((task) => (
-                <TaskLine key={task.id} task={task} onToggle={() => toggleDone(task)} showDate />
+                <TaskLine key={task.id} task={task} onToggle={() => toggleDone(task)} onOpen={() => setPanelTask(task)} showDate />
               ))}
             </div>
           )}
@@ -200,6 +204,15 @@ export default function HomePage() {
       )}
 
     </div>
+    </div>
+    <TaskPanel
+      task={panelTask}
+      streams={streams}
+      onClose={() => setPanelTask(null)}
+      onUpdate={async (id, updates) => { await updateTask(id, updates); setPanelTask((prev) => prev ? { ...prev, ...updates } : null); load() }}
+      onDelete={async (id) => { await deleteTask(id); load(); setPanelTask(null) }}
+    />
+    </>
   )
 }
 
@@ -227,12 +240,12 @@ function SectionHeader({ icon, label, href }: { icon: React.ReactNode; label: st
   )
 }
 
-function TaskLine({ task, onToggle, showDate }: { task: Task; onToggle: () => void; showDate?: boolean }) {
+function TaskLine({ task, onToggle, onOpen, showDate }: { task: Task; onToggle: () => void; onOpen: () => void; showDate?: boolean }) {
   const priority = PRIORITY_CONFIG[task.priority]
   const overdue = isOverdue(task.due_date, task.status)
   return (
-    <div className="flex items-center gap-2.5 px-3 py-2 bg-white rounded-xl border border-gray-100 hover:border-gray-200 transition-all">
-      <button onClick={onToggle} className="flex-shrink-0 text-gray-300 hover:text-green-500 transition-colors">
+    <div onClick={onOpen} className="flex items-center gap-2.5 px-3 py-2 bg-white rounded-xl border border-gray-100 hover:border-gray-200 transition-all cursor-pointer">
+      <button onClick={(e) => { e.stopPropagation(); onToggle() }} className="flex-shrink-0 text-gray-300 hover:text-green-500 transition-colors">
         <Circle size={15} />
       </button>
       <span className="text-sm text-gray-800 flex-1 truncate">{task.title}</span>
