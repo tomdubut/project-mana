@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ListTodo, CheckSquare, BarChart2, BookOpen, Settings, LogOut, Zap, Plus, ChevronDown, ChevronRight, Layers, Check } from 'lucide-react'
+import { ListTodo, CheckSquare, BarChart2, BookOpen, Settings, LogOut, Zap, Plus, ChevronDown, ChevronRight, Layers, Check, Home } from 'lucide-react'
 import { cn, STREAM_COLORS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
@@ -12,6 +12,7 @@ import { getTasks } from '@/lib/queries/tasks'
 import { useWorkspace } from '@/lib/workspace-context'
 
 const VIEWS = [
+  { key: 'home',     label: 'Home',         icon: Home      },
   { key: 'todo',     label: 'To-Do List',  icon: ListTodo  },
   { key: 'tasks',    label: 'Tasks',        icon: CheckSquare },
   { key: 'strategy', label: 'Strategy',     icon: BarChart2 },
@@ -67,13 +68,13 @@ export function Sidebar() {
     setCreating(false)
   }
 
-  const currentView = VIEWS.find((v) => pathname.endsWith(v.key))?.key ?? 'todo'
+  const currentView = VIEWS.find((v) => pathname.endsWith(v.key))?.key ?? 'home'
 
   const MOBILE_NAV = [
+    { key: 'home',     label: 'Home',     icon: Home        },
     { key: 'todo',     label: 'To-Do',    icon: ListTodo    },
     { key: 'tasks',    label: 'Tasks',    icon: CheckSquare },
     { key: 'strategy', label: 'Strategy', icon: BarChart2   },
-    { key: 'knowledge',label: 'Knowledge',icon: BookOpen    },
   ]
 
   return (
