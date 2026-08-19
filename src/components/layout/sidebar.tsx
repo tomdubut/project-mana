@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { ListTodo, CheckSquare, BarChart2, BookOpen, Settings, LogOut, Zap, Plus, ChevronDown, ChevronRight, Layers, Check, Home } from 'lucide-react'
-import { cn, STREAM_COLORS } from '@/lib/utils'
+import { cn, STREAM_COLORS, isOverdue } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import type { WorkStream } from '@/types'
@@ -24,6 +24,7 @@ export function Sidebar() {
   const router = useRouter()
   const [streams, setStreams] = useState<WorkStream[]>([])
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({})
+  const [overdueCount, setOverdueCount] = useState(0)
   const [streamsOpen, setStreamsOpen] = useState(true)
   const [wsMenuOpen, setWsMenuOpen] = useState(false)
   const [mobileWsOpen, setMobileWsOpen] = useState(false)
@@ -45,6 +46,7 @@ export function Sidebar() {
         if (task.stream_id) counts[task.stream_id] = (counts[task.stream_id] ?? 0) + 1
       }
       setTaskCounts(counts)
+      setOverdueCount(t.filter((task) => isOverdue(task.due_date, task.status)).length)
     }).catch(() => {})
   }, [pathname, activeWorkspace?.id])
 
@@ -187,7 +189,12 @@ export function Sidebar() {
             )}
           >
             <Icon size={16} />
-            {label}
+            <span className="flex-1">{label}</span>
+            {key === 'tasks' && overdueCount > 0 && (
+              <span className="text-xs font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full leading-none">
+                {overdueCount}
+              </span>
+            )}
           </Link>
         ))}
       </nav>
@@ -205,7 +212,6 @@ export function Sidebar() {
         {streamsOpen && (
           <div className="mt-1">
             {(() => {
-              // Group streams by goal
               const groups: { goalId: string | null; goalTitle: string | null; streams: WorkStream[] }[] = []
               const seen = new Set<string | null>()
               for (const s of streams) {
@@ -217,7 +223,6 @@ export function Sidebar() {
                 }
                 groups.find(g => g.goalId === goalId)!.streams.push(s)
               }
-              // Goals first, ungrouped last
               groups.sort((a, b) => {
                 if (a.goalId === null) return 1
                 if (b.goalId === null) return -1
@@ -307,7 +312,14 @@ export function Sidebar() {
               : 'text-gray-500 hover:text-gray-900'
           )}
         >
-          <Icon size={20} />
+          <div className="relative">
+            <Icon size={20} />
+            {key === 'tasks' && overdueCount > 0 && (
+              <span className="absolute -top-1 -right-2 text-[10px] font-bold bg-red-500 text-white px-1 rounded-full leading-tight">
+                {overdueCount}
+              </span>
+            )}
+          </div>
           {label}
         </Link>
       ))}

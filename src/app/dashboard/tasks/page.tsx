@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   Plus, Circle, CheckCircle2, Clock, Sparkles,
-  MoreHorizontal, Pencil, Trash2, Filter,
+  MoreHorizontal, Pencil, Trash2, Filter, AlertTriangle,
 } from 'lucide-react'
 import { getTasks, createTask, updateTask, deleteTask } from '@/lib/queries/tasks'
 import { getStreams } from '@/lib/queries/streams'
@@ -42,7 +42,11 @@ export default function TasksPage() {
 
   useEffect(() => { load() }, [load])
 
+  const overdueTasks = tasks.filter((t) => isOverdue(t.due_date, t.status))
+  const overdueIds = new Set(overdueTasks.map((t) => t.id))
+
   const filtered = tasks.filter((t) => {
+    if (overdueIds.has(t.id)) return false
     if (filterStatus !== 'all' && t.status !== filterStatus) return false
     if (filterPriority !== 'all' && t.priority !== filterPriority) return false
     return true
@@ -144,10 +148,38 @@ export default function TasksPage() {
           </div>
         </div>
 
+        {/* Overdue section */}
+        {overdueTasks.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle size={13} className="text-red-500" />
+              <p className="text-xs font-semibold text-red-600 uppercase tracking-wider">
+                Overdue — {overdueTasks.length} task{overdueTasks.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              {overdueTasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  streams={streams}
+                  menuOpen={menuOpen === task.id}
+                  onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
+                  onCloseMenu={() => setMenuOpen(null)}
+                  onToggle={() => handleToggle(task)}
+                  onOpen={() => setPanelTask(task)}
+                  onEdit={() => { setPanelTask(task); setMenuOpen(null) }}
+                  onDelete={() => { handleDelete(task.id); setMenuOpen(null) }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Task list */}
-        {filtered.length === 0 ? (
+        {filtered.length === 0 && overdueTasks.length === 0 ? (
           <div className="text-center py-16 text-gray-400 text-sm">No tasks match.</div>
-        ) : (
+        ) : filtered.length > 0 ? (
           <div className="space-y-1.5">
             {filtered.map((task) => (
               <TaskRow
@@ -164,7 +196,7 @@ export default function TasksPage() {
               />
             ))}
           </div>
-        )}
+        ) : null}
       </div>
 
       <TaskPanel
@@ -189,7 +221,8 @@ function TaskRow({ task, streams, menuOpen, onMenu, onCloseMenu, onToggle, onOpe
 
   return (
     <div className={cn(
-      'group flex items-center gap-3 px-4 py-2.5 bg-white rounded-xl border border-gray-100 hover:border-gray-200 transition-all',
+      'group flex items-center gap-3 px-4 py-2.5 bg-white rounded-xl border transition-all',
+      overdue ? 'border-red-100 hover:border-red-200' : 'border-gray-100 hover:border-gray-200',
       task.status === 'done' && 'opacity-50'
     )}>
       <button onClick={onToggle} className="flex-shrink-0 text-gray-300 hover:text-green-500 transition-colors">
@@ -213,7 +246,7 @@ function TaskRow({ task, streams, menuOpen, onMenu, onCloseMenu, onToggle, onOpe
           </span>
         )}
         {task.due_date && (
-          <span className={cn('text-xs flex items-center gap-1', overdue ? 'text-red-500' : 'text-gray-400')}>
+          <span className={cn('text-xs flex items-center gap-1', overdue ? 'text-red-500 font-medium' : 'text-gray-400')}>
             <Clock size={10} />{formatDate(task.due_date)}
           </span>
         )}
