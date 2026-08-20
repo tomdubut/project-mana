@@ -13,8 +13,8 @@ export async function GET(request: Request) {
 
   if (error) return apiError(error.message, 500)
 
-  const goals = (data ?? []).map((g: any) => {
-    // Tasks directly on the goal + tasks on any of its streams (deduplicated by id)
+  const projects = (data ?? []).map((g: any) => {
+    // Tasks directly on the project + tasks on any of its streams (deduplicated by id)
     const directTasks: any[] = g.tasks ?? []
     const streamTasks: any[] = (g.streams ?? []).flatMap((s: any) => s.tasks ?? [])
     const seen = new Set<string>()
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     return { ...g, task_count: tasks.length, done_count: done, progress: tasks.length ? Math.round((done / tasks.length) * 100) : 0 }
   })
 
-  return apiOk(goals)
+  return apiOk(projects)
 }
 
 export async function POST(request: Request) {

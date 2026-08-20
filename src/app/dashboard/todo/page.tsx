@@ -4,12 +4,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { Sparkles, RefreshCw, CheckCircle2, Circle, Clock, AlertTriangle } from 'lucide-react'
 import { getTasks, updateTask, deleteTask } from '@/lib/queries/tasks'
 import { getStreams } from '@/lib/queries/streams'
-import { getGoals } from '@/lib/queries/goals'
+import { getProjects } from '@/lib/queries/goals'
 import { Button } from '@/components/ui/button'
 import { cn, PRIORITY_CONFIG, STATUS_CONFIG, formatDate, isOverdue } from '@/lib/utils'
 import { TaskPanel } from '@/components/tasks/task-panel'
 import { useWorkspace } from '@/lib/workspace-context'
-import type { Task, WorkStream, Goal } from '@/types'
+import type { Task, WorkStream, Project } from '@/types'
 
 interface FocusItem {
   task: Task
@@ -20,7 +20,7 @@ export default function TodoPage() {
   const [focusItems, setFocusItems] = useState<FocusItem[]>([])
   const [allOpen, setAllOpen] = useState<Task[]>([])
   const [streams, setStreams] = useState<WorkStream[]>([])
-  const [goals, setGoals] = useState<Goal[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [panelTask, setPanelTask] = useState<Task | null>(null)
   const [scoring, setScoring] = useState(false)
   const [scoreError, setScoreError] = useState('')
@@ -32,11 +32,11 @@ export default function TodoPage() {
     const [tasks, s, g] = await Promise.all([
       getTasks({ openOnly: true, workspaceId: activeWorkspace?.id }),
       getStreams(false, activeWorkspace?.id),
-      getGoals(activeWorkspace?.id),
+      getProjects(activeWorkspace?.id),
     ])
     setAllOpen(tasks)
     setStreams(s)
-    setGoals(g)
+    setProjects(g)
 
     // Build focus list from AI scores already stored
     const scored = tasks
