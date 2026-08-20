@@ -1,40 +1,48 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, BookOpen, FileText, Pencil, Trash2, X, Save, Clock } from 'lucide-react'
+import { Plus, BookOpen, FileText, Pencil, Trash2, X, Save, Clock, Target, Layers } from 'lucide-react'
 import MDEditor from '@uiw/react-md-editor'
 import { getPages, createPage, updatePage, deletePage } from '@/lib/queries/knowledge'
 import { getStreams } from '@/lib/queries/streams'
+import { getProjects } from '@/lib/queries/goals'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { cn, formatDate } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
-import type { KnowledgePage, WorkStream } from '@/types'
+import type { KnowledgePage, WorkStream, Project } from '@/types'
 
 export default function KnowledgePage() {
   const [pages, setPages] = useState<KnowledgePage[]>([])
   const [streams, setStreams] = useState<WorkStream[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [selected, setSelected] = useState<KnowledgePage | null>(null)
   const [editing, setEditing] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [filterStream, setFilterStream] = useState('')
+  const [filterGoal, setFilterGoal] = useState('')
   const [saving, setSaving] = useState(false)
-  const [draft, setDraft] = useState({ title: '', content: '', stream_id: '' })
+  const [draft, setDraft] = useState({ title: '', content: '', stream_id: '', goal_id: '' })
 
   const { activeWorkspace } = useWorkspace()
 
   const load = useCallback(async () => {
-    const [p, s] = await Promise.all([getPages(undefined, activeWorkspace?.id), getStreams(false, activeWorkspace?.id)])
+    const [p, s, g] = await Promise.all([
+      getPages(undefined, activeWorkspace?.id),
+      getStreams(false, activeWorkspace?.id),
+      getProjects(activeWorkspace?.id),
+    ])
     setPages(p)
     setStreams(s)
+    setProjects(g)
   }, [activeWorkspace?.id])
 
   useEffect(() => { load() }, [load])
 
   function openPage(page: KnowledgePage) {
     setSelected(page)
-    setDraft({ title: page.title, content: page.content, stream_id: page.stream_id ?? '' })
+    setDraft({ title: page.title, content: page.content, stream_id: page.stream_id ?? '', goal_id: page.goal_id ?? '' })
     setEditing(false)
   }
 
@@ -45,6 +53,7 @@ export default function KnowledgePage() {
       title: draft.title,
       content: draft.content,
       stream_id: draft.stream_id || null,
+      goal_id: draft.goal_id || null,
     })
     setSelected(updated)
     setEditing(false)
@@ -59,6 +68,7 @@ export default function KnowledgePage() {
       title: (fd.get('title') as string).trim(),
       content: '',
       stream_id: (fd.get('stream_id') as string) || null,
+      goal_id: (fd.get('goal_id') as string) || null,
       workspace_id: activeWorkspace?.id ?? null,
     })
     setShowNew(false)
@@ -73,7 +83,11 @@ export default function KnowledgePage() {
     load()
   }
 
-  const filtered = pages.filter((p) => !filterStream || p.stream_id === filterStream)
+  const filtered = pages.filter((p) => {
+    if (filterStream && p.stream_id !== filterStream) return false
+    if (filterGoal && p.goal_id !== filterGoal) return false
+    return true
+  })
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -88,10 +102,16 @@ export default function KnowledgePage() {
               <Plus size={16} />
             </button>
           </div>
-          <Select value={filterStream} onChange={(e) => setFilterStream(e.target.value)} className="text-xs">
-            <option value="">All streams</option>
-            {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </Select>
+          <div className="space-y-1.5">
+            <Select value={filterGoal} onChange={(e) => { setFilterGoal(e.target.value); setFilterStream('') }} className="text-xs">
+              <option value="">All projects</option>
+              {projects.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
+            </Select>
+            <Select value={filterStream} onChange={(e) => { setFilterStream(e.target.value); setFilterGoal('') }} className="text-xs">
+              <option value="">All streams</option>
+              {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </Select>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto py-2">
@@ -103,6 +123,7 @@ export default function KnowledgePage() {
           ) : (
             filtered.map((page) => {
               const stream = streams.find((s) => s.id === page.stream_id)
+              const goal = projects.find((g) => g.id === page.goal_id)
               return (
                 <button
                   key={page.id}
@@ -123,7 +144,12 @@ export default function KnowledgePage() {
                       <Trash2 size={12} />
                     </button>
                   </div>
-                  {stream && (
+                  {goal && (
+                    <span className="text-xs text-indigo-400 flex items-center gap-1 mt-0.5">
+                      <Target size={10} /> {goal.title}
+                    </span>
+                  )}
+                  {stream && !goal && (
                     <span className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stream.color }} />
                       {stream.name}
@@ -154,8 +180,16 @@ export default function KnowledgePage() {
                 {editing ? (
                   <>
                     <Select
+                      value={draft.goal_id}
+                      onChange={(e) => setDraft({ ...draft, goal_id: e.target.value, stream_id: '' })}
+                      className="text-xs w-36"
+                    >
+                      <option value="">No project</option>
+                      {projects.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
+                    </Select>
+                    <Select
                       value={draft.stream_id}
-                      onChange={(e) => setDraft({ ...draft, stream_id: e.target.value })}
+                      onChange={(e) => setDraft({ ...draft, stream_id: e.target.value, goal_id: '' })}
                       className="text-xs w-36"
                     >
                       <option value="">No stream</option>
@@ -164,16 +198,29 @@ export default function KnowledgePage() {
                     <Button size="sm" onClick={handleSave} disabled={saving}>
                       <Save size={13} /> {saving ? 'Saving…' : 'Save'}
                     </Button>
-                    <button onClick={() => { setEditing(false); setDraft({ title: selected.title, content: selected.content, stream_id: selected.stream_id ?? '' }) }}
+                    <button onClick={() => { setEditing(false); setDraft({ title: selected.title, content: selected.content, stream_id: selected.stream_id ?? '', goal_id: selected.goal_id ?? '' }) }}
                       className="text-gray-400 hover:text-gray-600 transition-colors">
                       <X size={18} />
                     </button>
                   </>
                 ) : (
                   <>
-                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                      <Clock size={11} /> {formatDate(selected.updated_at)}
-                    </span>
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      {selected.goal && (
+                        <span className="flex items-center gap-1 text-indigo-500">
+                          <Target size={11} /> {selected.goal.title}
+                        </span>
+                      )}
+                      {selected.stream && (
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: selected.stream.color }} />
+                          {selected.stream.name}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <Clock size={11} /> {formatDate(selected.updated_at)}
+                      </span>
+                    </div>
                     <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
                       <Pencil size={13} /> Edit
                     </Button>
@@ -232,7 +279,18 @@ export default function KnowledgePage() {
                 <Input name="title" placeholder="Page title" autoFocus required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Work Stream</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                  <Target size={12} /> Project
+                </label>
+                <Select name="goal_id">
+                  <option value="">No project</option>
+                  {projects.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                  <Layers size={12} /> Work Stream
+                </label>
                 <Select name="stream_id">
                   <option value="">No stream</option>
                   {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
