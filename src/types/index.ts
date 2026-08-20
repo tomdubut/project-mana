@@ -55,11 +55,13 @@ export interface KnowledgePage {
   id: string
   user_id: string
   stream_id: string | null
+  goal_id: string | null
   title: string
   content: string
   created_at: string
   updated_at: string
   stream?: WorkStream | null
+  goal?: Project | null
 }
 
 export interface Workspace {

@@ -20,7 +20,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params
   if (!await getPage(userId, id)) return apiError('Not found', 404)
   const body = await request.json()
-  const allowed = ['title', 'content', 'stream_id']
+  const allowed = ['title', 'content', 'stream_id', 'goal_id']
   const updates: Record<string, unknown> = {}
   for (const key of allowed) { if (key in body) updates[key] = body[key] }
   const { data, error } = await supabaseAdmin().from('knowledge_pages').update(updates).eq('id', id).select().single()
