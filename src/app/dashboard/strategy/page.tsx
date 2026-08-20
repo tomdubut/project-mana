@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { Plus, Target, Layers, MoreHorizontal, Pencil, Trash2, Calendar, ExternalLink, ChevronDown, ChevronRight, Archive, ArchiveRestore } from 'lucide-react'
-import { getGoals, createGoal, updateGoal, deleteGoal } from '@/lib/queries/goals'
+import { getProjects, createProject, updateProject, deleteProject } from '@/lib/queries/goals'
 import { getStreams, createStream, updateStream, deleteStream } from '@/lib/queries/streams'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,56 +10,56 @@ import { Select } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
 import { cn, STREAM_COLORS, formatDate, daysUntil } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
-import type { WorkStream, Goal } from '@/types'
+import type { WorkStream, Project } from '@/types'
 import Link from 'next/link'
 
 export default function StrategyPage() {
-  const [goals, setGoals] = useState<Goal[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [streams, setStreams] = useState<WorkStream[]>([])
-  const [editGoal, setEditGoal] = useState<Goal | null>(null)
-  const [showNewGoal, setShowNewGoal] = useState(false)
+  const [editProject, setEditProject] = useState<Project | null>(null)
+  const [showNewProject, setShowNewProject] = useState(false)
   const [editStream, setEditStream] = useState<WorkStream | null>(null)
   const [showNewStream, setShowNewStream] = useState(false)
-  const [newStreamGoalId, setNewStreamGoalId] = useState<string | null>(null)
-  const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set())
+  const [newStreamProjectId, setNewStreamProjectId] = useState<string | null>(null)
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
   const [archivedStreams, setArchivedStreams] = useState<WorkStream[]>([])
   const [showArchived, setShowArchived] = useState(false)
-  const [archivedGoals, setArchivedGoals] = useState<Goal[]>([])
-  const [showArchivedGoals, setShowArchivedGoals] = useState(false)
+  const [archivedProjects, setArchivedProjects] = useState<Project[]>([])
+  const [showArchivedProjects, setShowArchivedProjects] = useState(false)
 
   const { activeWorkspace } = useWorkspace()
 
   const load = useCallback(async () => {
-    const [g, allGoals, s, archived] = await Promise.all([
-      getGoals(activeWorkspace?.id),
-      getGoals(activeWorkspace?.id, true),
+    const [g, allProjects, s, archived] = await Promise.all([
+      getProjects(activeWorkspace?.id),
+      getProjects(activeWorkspace?.id, true),
       getStreams(false, activeWorkspace?.id),
       getStreams(true, activeWorkspace?.id),
     ])
-    setGoals(g)
-    setArchivedGoals(allGoals.filter((goal) => goal.archived))
+    setProjects(g)
+    setArchivedProjects(allProjects.filter((project) => project.archived))
     setStreams(s)
     setArchivedStreams(archived.filter((s) => s.archived))
-    setExpandedGoals(new Set(g.map((goal) => goal.id)))
+    setExpandedProjects(new Set(g.map((project) => project.id)))
   }, [activeWorkspace?.id])
 
   useEffect(() => { load() }, [load])
 
-  function toggleGoal(id: string) {
-    setExpandedGoals((prev) => {
+  function toggleProject(id: string) {
+    setExpandedProjects((prev) => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
   }
 
-  function openNewStream(goalId: string | null = null) {
-    setNewStreamGoalId(goalId)
+  function openNewStream(projectId: string | null = null) {
+    setNewStreamProjectId(projectId)
     setShowNewStream(true)
   }
 
-  // Streams not linked to any goal
+  // Streams not linked to any project
   const orphanStreams = streams.filter((s) => !s.goal_id)
 
   return (
@@ -70,32 +70,32 @@ export default function StrategyPage() {
           <Button size="sm" variant="secondary" onClick={() => openNewStream(null)}>
             <Layers size={14} /> New stream
           </Button>
-          <Button size="sm" onClick={() => setShowNewGoal(true)}>
-            <Plus size={14} /> New goal
+          <Button size="sm" onClick={() => setShowNewProject(true)}>
+            <Plus size={14} /> New project
           </Button>
         </div>
       </div>
 
-      {/* Goals with nested streams */}
-      {goals.length === 0 && orphanStreams.length === 0 ? (
+      {/* Projects with nested streams */}
+      {projects.length === 0 && orphanStreams.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
           <Target size={40} className="mx-auto mb-3 opacity-20" />
-          <p className="text-sm">No goals yet.</p>
-          <button onClick={() => setShowNewGoal(true)} className="mt-2 text-indigo-600 text-sm hover:underline">
-            Set your first goal
+          <p className="text-sm">No projects yet.</p>
+          <button onClick={() => setShowNewProject(true)} className="mt-2 text-indigo-600 text-sm hover:underline">
+            Set your first project
           </button>
         </div>
       ) : (
         <div className="space-y-3">
-          {goals.map((goal) => {
-            const goalStreams = streams.filter((s) => s.goal_id === goal.id)
-            const expanded = expandedGoals.has(goal.id)
+          {projects.map((project) => {
+            const goalStreams = streams.filter((s) => s.goal_id === project.id)
+            const expanded = expandedProjects.has(project.id)
             return (
-              <div key={goal.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                {/* Goal row */}
+              <div key={project.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                {/* Project row */}
                 <div className="group flex items-start gap-3 p-4">
                   <button
-                    onClick={() => toggleGoal(goal.id)}
+                    onClick={() => toggleProject(project.id)}
                     className="mt-0.5 flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
                   >
                     {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -104,10 +104,10 @@ export default function StrategyPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <Target size={15} className="text-indigo-500 flex-shrink-0" />
-                      <h3 className="font-semibold text-gray-900 text-sm">{goal.title}</h3>
+                      <h3 className="font-semibold text-gray-900 text-sm">{project.title}</h3>
                     </div>
-                    {goal.description && (
-                      <p className="text-xs text-gray-500 mb-2 line-clamp-1">{goal.description}</p>
+                    {project.description && (
+                      <p className="text-xs text-gray-500 mb-2 line-clamp-1">{project.description}</p>
                     )}
 
                     {/* Progress */}
@@ -115,37 +115,37 @@ export default function StrategyPage() {
                       <div className="flex-1 bg-gray-100 rounded-full h-1.5">
                         <div
                           className="h-1.5 rounded-full bg-indigo-500 transition-all"
-                          style={{ width: `${goal.progress ?? 0}%` }}
+                          style={{ width: `${project.progress ?? 0}%` }}
                         />
                       </div>
-                      <span className="text-xs font-medium text-gray-500 w-8 text-right">{goal.progress ?? 0}%</span>
-                      <span className="text-xs text-gray-400">{goal.done_count}/{goal.task_count} tasks</span>
-                      {goal.target_date && (
+                      <span className="text-xs font-medium text-gray-500 w-8 text-right">{project.progress ?? 0}%</span>
+                      <span className="text-xs text-gray-400">{project.done_count}/{project.task_count} tasks</span>
+                      {project.target_date && (
                         <span className="text-xs text-gray-400 flex items-center gap-1">
-                          <Calendar size={10} /> {formatDate(goal.target_date)}
+                          <Calendar size={10} /> {formatDate(project.target_date)}
                         </span>
                       )}
                     </div>
                   </div>
 
                   <RowMenu
-                    id={goal.id}
-                    open={menuOpen === goal.id}
-                    onToggle={() => setMenuOpen(menuOpen === goal.id ? null : goal.id)}
+                    id={project.id}
+                    open={menuOpen === project.id}
+                    onToggle={() => setMenuOpen(menuOpen === project.id ? null : project.id)}
                     onClose={() => setMenuOpen(null)}
-                    onEdit={() => { setEditGoal(goal); setMenuOpen(null) }}
+                    onEdit={() => { setEditProject(project); setMenuOpen(null) }}
                     onArchive={async () => {
-                      const goalStreams = streams.filter((s) => s.goal_id === goal.id)
+                      const goalStreams = streams.filter((s) => s.goal_id === project.id)
                       await Promise.all([
-                        updateGoal(goal.id, { archived: true }),
+                        updateProject(project.id, { archived: true }),
                         ...goalStreams.map((s) => updateStream(s.id, { archived: true })),
                       ])
                       setMenuOpen(null)
                       load()
                     }}
                     onDelete={async () => {
-                      if (!confirm('Delete this goal? Streams linked to it will become standalone.')) return
-                      await deleteGoal(goal.id)
+                      if (!confirm('Delete this project? Streams linked to it will become standalone.')) return
+                      await deleteProject(project.id)
                       setMenuOpen(null)
                       load()
                     }}
@@ -172,10 +172,10 @@ export default function StrategyPage() {
                       />
                     ))}
                     <button
-                      onClick={() => openNewStream(goal.id)}
+                      onClick={() => openNewStream(project.id)}
                       className="flex items-center gap-2 w-full px-6 py-2.5 text-xs text-gray-400 hover:text-indigo-600 hover:bg-gray-100 transition-colors"
                     >
-                      <Plus size={12} /> Add stream to this goal
+                      <Plus size={12} /> Add stream to this project
                     </button>
                   </div>
                 )}
@@ -251,35 +251,35 @@ export default function StrategyPage() {
         </div>
       )}
 
-      {/* Archived goals */}
-      {archivedGoals.length > 0 && (
+      {/* Archived projects */}
+      {archivedProjects.length > 0 && (
         <div className="mt-4">
           <button
-            onClick={() => setShowArchivedGoals(!showArchivedGoals)}
+            onClick={() => setShowArchivedProjects(!showArchivedProjects)}
             className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors mb-2"
           >
-            {showArchivedGoals ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            {showArchivedProjects ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
             <Archive size={13} />
-            Archived goals ({archivedGoals.length})
+            Archived projects ({archivedProjects.length})
           </button>
-          {showArchivedGoals && (
+          {showArchivedProjects && (
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-              {archivedGoals.map((goal) => (
-                <div key={goal.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 opacity-60 hover:opacity-100 transition-opacity">
+              {archivedProjects.map((project) => (
+                <div key={project.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 opacity-60 hover:opacity-100 transition-opacity">
                   <Target size={14} className="text-indigo-300 flex-shrink-0" />
-                  <span className="text-sm text-gray-700 flex-1 truncate">{goal.title}</span>
-                  {goal.target_date && (
-                    <span className="text-xs text-gray-400 flex-shrink-0">{formatDate(goal.target_date)}</span>
+                  <span className="text-sm text-gray-700 flex-1 truncate">{project.title}</span>
+                  {project.target_date && (
+                    <span className="text-xs text-gray-400 flex-shrink-0">{formatDate(project.target_date)}</span>
                   )}
                   <button
-                    onClick={async () => { await updateGoal(goal.id, { archived: false }); load() }}
+                    onClick={async () => { await updateProject(project.id, { archived: false }); load() }}
                     className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors flex-shrink-0"
                     title="Unarchive"
                   >
                     <ArchiveRestore size={13} /> Unarchive
                   </button>
                   <button
-                    onClick={async () => { if (!confirm('Delete this goal? Streams linked to it will become standalone.')) return; await deleteGoal(goal.id); load() }}
+                    onClick={async () => { if (!confirm('Delete this project? Streams linked to it will become standalone.')) return; await deleteProject(project.id); load() }}
                     className="text-gray-300 hover:text-red-500 p-1 rounded transition-colors flex-shrink-0"
                     title="Delete"
                   >
@@ -293,27 +293,27 @@ export default function StrategyPage() {
       )}
 
       {/* Modals */}
-      <Modal open={showNewGoal} onClose={() => setShowNewGoal(false)} title="New goal">
-        <GoalForm
+      <Modal open={showNewProject} onClose={() => setShowNewProject(false)} title="New project">
+        <ProjectForm
           workspaceId={activeWorkspace?.id}
-          onSuccess={() => { setShowNewGoal(false); load() }}
-          onCancel={() => setShowNewGoal(false)}
+          onSuccess={() => { setShowNewProject(false); load() }}
+          onCancel={() => setShowNewProject(false)}
         />
       </Modal>
-      <Modal open={!!editGoal} onClose={() => setEditGoal(null)} title="Edit goal">
-        {editGoal && (
-          <GoalForm
-            goal={editGoal}
+      <Modal open={!!editProject} onClose={() => setEditProject(null)} title="Edit project">
+        {editProject && (
+          <ProjectForm
+            project={editProject}
             workspaceId={activeWorkspace?.id}
-            onSuccess={() => { setEditGoal(null); load() }}
-            onCancel={() => setEditGoal(null)}
+            onSuccess={() => { setEditProject(null); load() }}
+            onCancel={() => setEditProject(null)}
           />
         )}
       </Modal>
       <Modal open={showNewStream} onClose={() => setShowNewStream(false)} title="New work stream">
         <StreamForm
-          goals={goals}
-          defaultGoalId={newStreamGoalId}
+          projects={projects}
+          defaultProjectId={newStreamProjectId}
           workspaceId={activeWorkspace?.id}
           onSuccess={() => { setShowNewStream(false); load() }}
           onCancel={() => setShowNewStream(false)}
@@ -323,7 +323,7 @@ export default function StrategyPage() {
         {editStream && (
           <StreamForm
             stream={editStream}
-            goals={goals}
+            projects={projects}
             workspaceId={activeWorkspace?.id}
             onSuccess={() => { setEditStream(null); load() }}
             onCancel={() => setEditStream(null)}
@@ -334,7 +334,7 @@ export default function StrategyPage() {
   )
 }
 
-// ── Stream row ───────────────────────────────────────────────
+// ── Stream row ──────────────────────────────────────────────
 function StreamRow({ stream, menuOpen, onToggleMenu, onCloseMenu, onEdit, onDelete }: {
   stream: WorkStream
   menuOpen: boolean; onToggleMenu: () => void; onCloseMenu: () => void
@@ -369,14 +369,14 @@ function StreamRow({ stream, menuOpen, onToggleMenu, onCloseMenu, onEdit, onDele
   )
 }
 
-// ── Goal Form ───────────────────────────────────────────────
-function GoalForm({ goal, workspaceId, onSuccess, onCancel }: { goal?: Goal; workspaceId?: string; onSuccess: () => void; onCancel: () => void }) {
+// ── Project Form ─────────────────────────────────────────────
+function ProjectForm({ project, workspaceId, onSuccess, onCancel }: { project?: Project; workspaceId?: string; onSuccess: () => void; onCancel: () => void }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({
-    title: goal?.title ?? '',
-    description: goal?.description ?? '',
-    target_date: goal?.target_date ?? '',
+    title: project?.title ?? '',
+    description: project?.description ?? '',
+    target_date: project?.target_date ?? '',
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -385,8 +385,8 @@ function GoalForm({ goal, workspaceId, onSuccess, onCancel }: { goal?: Goal; wor
     setError(''); setLoading(true)
     try {
       const payload = { title: form.title.trim(), description: form.description || null, target_date: form.target_date || null }
-      if (goal) await updateGoal(goal.id, payload)
-      else await createGoal({ ...payload, workspace_id: workspaceId ?? null })
+      if (project) await updateProject(project.id, payload)
+      else await createProject({ ...payload, workspace_id: workspaceId ?? null })
       onSuccess()
     } catch (err: any) { setError(err.message) } finally { setLoading(false) }
   }
@@ -409,15 +409,15 @@ function GoalForm({ goal, workspaceId, onSuccess, onCancel }: { goal?: Goal; wor
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" disabled={loading}>{loading ? 'Saving…' : goal ? 'Update' : 'Create goal'}</Button>
+        <Button type="submit" disabled={loading}>{loading ? 'Saving…' : project ? 'Update' : 'Create project'}</Button>
       </div>
     </form>
   )
 }
 
-// ── Stream Form ───────────────────────────────────────────────
-function StreamForm({ stream, goals, defaultGoalId, workspaceId, onSuccess, onCancel }: {
-  stream?: WorkStream; goals: Goal[]; defaultGoalId?: string | null; workspaceId?: string
+// ── Stream Form ─────────────────────────────────────────────
+function StreamForm({ stream, projects, defaultProjectId, workspaceId, onSuccess, onCancel }: {
+  stream?: WorkStream; projects: Project[]; defaultProjectId?: string | null; workspaceId?: string
   onSuccess: () => void; onCancel: () => void
 }) {
   const [loading, setLoading] = useState(false)
@@ -428,7 +428,7 @@ function StreamForm({ stream, goals, defaultGoalId, workspaceId, onSuccess, onCa
     color: stream?.color ?? STREAM_COLORS[0],
     is_ongoing: stream?.is_ongoing ?? true,
     deadline: stream?.deadline ?? '',
-    goal_id: stream?.goal_id ?? defaultGoalId ?? '',
+    goal_id: stream?.goal_id ?? defaultProjectId ?? '',
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -457,10 +457,10 @@ function StreamForm({ stream, goals, defaultGoalId, workspaceId, onSuccess, onCa
         <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus required />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Goal</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
         <Select value={form.goal_id} onChange={(e) => setForm({ ...form, goal_id: e.target.value })}>
-          <option value="">No goal (standalone)</option>
-          {goals.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
+          <option value="">No project (standalone)</option>
+          {projects.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
         </Select>
       </div>
       <div>
