@@ -4,7 +4,7 @@ const spec = {
   openapi: '3.1.0',
   info: {
     title: 'Project Mana API',
-    description: 'Personal productivity API — manage goals, work streams, tasks, and knowledge pages across workspaces.',
+    description: 'Personal productivity API — manage projects, work streams, tasks, and knowledge pages across workspaces.',
     version: '1.0.0',
   },
   servers: [{ url: 'https://project-mana-kappa.vercel.app/api/v1' }],
@@ -27,7 +27,7 @@ const spec = {
           created_at: { type: 'string', format: 'date-time' },
         },
       },
-      Goal: {
+      Project: {
         type: 'object',
         properties: {
           id: { type: 'string', format: 'uuid' },
@@ -80,6 +80,7 @@ const spec = {
           id: { type: 'string', format: 'uuid' },
           title: { type: 'string' },
           content: { type: 'string' },
+          goal_id: { type: 'string', format: 'uuid', nullable: true },
           stream_id: { type: 'string', format: 'uuid', nullable: true },
           workspace_id: { type: 'string', format: 'uuid', nullable: true },
           created_at: { type: 'string', format: 'date-time' },
@@ -100,18 +101,18 @@ const spec = {
     },
     '/goals': {
       get: {
-        operationId: 'listGoals',
-        summary: 'List active goals',
+        operationId: 'listProjects',
+        summary: 'List active projects',
         parameters: [
           { name: 'workspace_id', in: 'query', schema: { type: 'string' }, description: 'Filter by workspace' },
         ],
         responses: {
-          200: { description: 'OK', content: { 'application/json': { schema: { type: 'array', items: { '$ref': '#/components/schemas/Goal' } } } } },
+          200: { description: 'OK', content: { 'application/json': { schema: { type: 'array', items: { '$ref': '#/components/schemas/Project' } } } } },
         },
       },
       post: {
-        operationId: 'createGoal',
-        summary: 'Create a goal',
+        operationId: 'createProject',
+        summary: 'Create a project',
         requestBody: {
           required: true,
           content: {
@@ -130,14 +131,14 @@ const spec = {
           },
         },
         responses: {
-          201: { description: 'Created', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Goal' } } } },
+          201: { description: 'Created', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Project' } } } },
         },
       },
     },
     '/goals/{id}': {
       patch: {
-        operationId: 'updateGoal',
-        summary: 'Update a goal',
+        operationId: 'updateProject',
+        summary: 'Update a project',
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         requestBody: {
           content: {
@@ -154,11 +155,11 @@ const spec = {
             },
           },
         },
-        responses: { 200: { description: 'OK', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Goal' } } } } },
+        responses: { 200: { description: 'OK', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Project' } } } } },
       },
       delete: {
-        operationId: 'deleteGoal',
-        summary: 'Delete a goal',
+        operationId: 'deleteProject',
+        summary: 'Delete a project',
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         responses: { 200: { description: 'OK' } },
       },
@@ -313,6 +314,7 @@ const spec = {
         summary: 'List knowledge pages',
         parameters: [
           { name: 'workspace_id', in: 'query', schema: { type: 'string' }, description: 'Filter by workspace' },
+          { name: 'goal_id', in: 'query', schema: { type: 'string' }, description: 'Filter by project' },
           { name: 'stream_id', in: 'query', schema: { type: 'string' }, description: 'Filter by stream' },
         ],
         responses: {
@@ -332,6 +334,7 @@ const spec = {
                 properties: {
                   title: { type: 'string' },
                   content: { type: 'string' },
+                  goal_id: { type: 'string', format: 'uuid' },
                   stream_id: { type: 'string', format: 'uuid' },
                   workspace_id: { type: 'string', format: 'uuid' },
                 },
@@ -355,6 +358,7 @@ const spec = {
                 properties: {
                   title: { type: 'string' },
                   content: { type: 'string' },
+                  goal_id: { type: 'string', format: 'uuid' },
                   stream_id: { type: 'string', format: 'uuid' },
                 },
               },

@@ -72,8 +72,8 @@ const TOOLS = [
     },
   },
   {
-    name: 'list_goals',
-    description: 'List all active goals with their associated streams and task progress',
+    name: 'list_projects',
+    description: 'List all active projects with their associated streams and task progress',
     inputSchema: {
       type: 'object',
       properties: {
@@ -82,8 +82,8 @@ const TOOLS = [
     },
   },
   {
-    name: 'create_goal',
-    description: 'Create a new goal. workspace_id is REQUIRED — always call list_workspaces first to get it.',
+    name: 'create_project',
+    description: 'Create a new project. workspace_id is REQUIRED — always call list_workspaces first to get it.',
     inputSchema: {
       type: 'object',
       required: ['title', 'workspace_id'],
@@ -91,13 +91,13 @@ const TOOLS = [
         title: { type: 'string' },
         description: { type: 'string' },
         target_date: { type: 'string', description: 'ISO date string' },
-        workspace_id: { type: 'string', description: 'Workspace ID to assign this goal to' },
+        workspace_id: { type: 'string', description: 'Workspace ID to assign this project to' },
       },
     },
   },
   {
-    name: 'update_goal',
-    description: 'Update an existing goal by ID',
+    name: 'update_project',
+    description: 'Update an existing project by ID',
     inputSchema: {
       type: 'object',
       required: ['id'],
@@ -111,8 +111,8 @@ const TOOLS = [
     },
   },
   {
-    name: 'delete_goal',
-    description: 'Delete a goal by ID',
+    name: 'delete_project',
+    description: 'Delete a project by ID',
     inputSchema: {
       type: 'object',
       required: ['id'],
@@ -157,10 +157,11 @@ const TOOLS = [
   },
   {
     name: 'list_pages',
-    description: 'List knowledge pages, optionally filtered by stream_id or workspace_id',
+    description: 'List knowledge pages, optionally filtered by goal_id, stream_id, or workspace_id',
     inputSchema: {
       type: 'object',
       properties: {
+        goal_id: { type: 'string', description: 'Filter by project ID' },
         stream_id: { type: 'string', description: 'Filter by work stream ID' },
         workspace_id: { type: 'string', description: 'Filter by workspace ID' },
       },
@@ -175,6 +176,7 @@ const TOOLS = [
       properties: {
         title: { type: 'string' },
         content: { type: 'string', description: 'Page content in Markdown' },
+        goal_id: { type: 'string', description: 'Project ID to link this page to' },
         stream_id: { type: 'string' },
         workspace_id: { type: 'string', description: 'Workspace ID to assign this page to' },
       },
@@ -190,6 +192,7 @@ const TOOLS = [
         id: { type: 'string' },
         title: { type: 'string' },
         content: { type: 'string' },
+        goal_id: { type: 'string' },
         stream_id: { type: 'string' },
       },
     },
@@ -243,7 +246,7 @@ WORKSPACES:
   - ALWAYS call list_workspaces as your very first action — before anything else
   - When the user mentions a workspace by name, match it to the correct workspace_id
   - If the user does not specify a workspace, ask which one they mean — NEVER create anything without a workspace_id
-  - NEVER call create_task, create_goal, create_stream, or create_page without a workspace_id — items created without workspace_id will be invisible in the app
+  - NEVER call create_task, create_project, create_stream, or create_page without a workspace_id — items created without workspace_id will be invisible in the app
   - You cannot switch the active workspace in the user's browser (that is a UI action) — but you can read and write data in any workspace by passing the correct workspace_id to every tool
 
 HIERARCHY (always respect this order):
@@ -254,14 +257,14 @@ HIERARCHY (always respect this order):
 
 BEFORE CREATING ANYTHING:
   1. Call list_workspaces — identify the appropriate workspace
-  2. Call list_goals with workspace_id — check if a relevant goal already exists
+  2. Call list_projects with workspace_id — check if a relevant project already exists
   3. Call list_streams with workspace_id — check if a relevant stream already exists under that goal
   4. Only create a new goal or stream if nothing relevant exists
   5. Always link tasks to the most relevant existing stream and goal when possible
 
 CREATION ORDER (if starting fresh):
   1. Create the Goal first (with workspace_id)
-  2. Create the Stream under that Goal (set goal_id and workspace_id)
+  2. Create the Stream under that Project (set goal_id and workspace_id)
   3. Create Tasks linked to the Stream (set stream_id, goal_id, and workspace_id)
 
 KNOWLEDGE PAGES:
@@ -355,7 +358,7 @@ GENERAL RULES:
     return toolResult({ deleted: true })
   }
 
-  if (name === 'list_goals') {
+  if (name === 'list_projects') {
     let q = db.from('goals')
       .select('*, streams:work_streams(id,name,color), tasks(id,status)')
       .eq('user_id', userId).eq('archived', false).order('created_at', { ascending: false })
@@ -370,7 +373,7 @@ GENERAL RULES:
     return toolResult(goals)
   }
 
-  if (name === 'create_goal') {
+  if (name === 'create_project') {
     if (!args.title) throw new Error('title is required')
     const { data, error } = await db.from('goals')
       .insert({ title: args.title, description: args.description ?? null, target_date: args.target_date ?? null, user_id: userId,
@@ -380,7 +383,7 @@ GENERAL RULES:
     return toolResult(data)
   }
 
-  if (name === 'update_goal') {
+  if (name === 'update_project') {
     if (!args.id) throw new Error('id is required')
     const { data: existing } = await db.from('goals').select('id').eq('id', args.id).eq('user_id', userId).single()
     if (!existing) throw new Error('Goal not found')
@@ -392,7 +395,7 @@ GENERAL RULES:
     return toolResult(data)
   }
 
-  if (name === 'delete_goal') {
+  if (name === 'delete_project') {
     if (!args.id) throw new Error('id is required')
     const { data: existing } = await db.from('goals').select('id').eq('id', args.id).eq('user_id', userId).single()
     if (!existing) throw new Error('Goal not found')
@@ -431,8 +434,9 @@ GENERAL RULES:
   }
 
   if (name === 'list_pages') {
-    let q = db.from('knowledge_pages').select('*, stream:work_streams(id,name,color)')
+    let q = db.from('knowledge_pages').select('*, stream:work_streams(id,name,color), goal:goals(id,title)')
       .eq('user_id', userId).order('updated_at', { ascending: false })
+    if (args.goal_id) q = q.eq('goal_id', args.goal_id)
     if (args.stream_id) q = q.eq('stream_id', args.stream_id)
     if (args.workspace_id) q = q.eq('workspace_id', args.workspace_id)
     const { data, error } = await q
@@ -443,8 +447,8 @@ GENERAL RULES:
   if (name === 'create_page') {
     if (!args.title) throw new Error('title is required')
     const { data, error } = await db.from('knowledge_pages')
-      .insert({ title: args.title, content: args.content ?? '', stream_id: args.stream_id ?? null, user_id: userId,
-        workspace_id: args.workspace_id ?? null })
+      .insert({ title: args.title, content: args.content ?? '', stream_id: args.stream_id ?? null,
+        goal_id: args.goal_id ?? null, user_id: userId, workspace_id: args.workspace_id ?? null })
       .select().single()
     if (error) throw new Error(error.message)
     return toolResult(data)
@@ -454,7 +458,7 @@ GENERAL RULES:
     if (!args.id) throw new Error('id is required')
     const { data: existing } = await db.from('knowledge_pages').select('id').eq('id', args.id).eq('user_id', userId).single()
     if (!existing) throw new Error('Page not found')
-    const allowed = ['title', 'content', 'stream_id']
+    const allowed = ['title', 'content', 'stream_id', 'goal_id']
     const updates: Record<string, unknown> = {}
     for (const k of allowed) { if (k in args) updates[k] = args[k] }
     const { data, error } = await db.from('knowledge_pages').update(updates).eq('id', args.id).select().single()
