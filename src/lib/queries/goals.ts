@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/client'
-import type { Goal } from '@/types'
+import type { Project } from '@/types'
 
-export async function getGoals(workspaceId?: string, includeArchived = false) {
+export async function getProjects(workspaceId?: string, includeArchived = false) {
   const supabase = createClient()
   let q = supabase
     .from('goals')
@@ -28,29 +28,29 @@ export async function getGoals(workspaceId?: string, includeArchived = false) {
       task_count: total,
       done_count: done,
       progress: total === 0 ? 0 : Math.round((done / total) * 100),
-    } as Goal
+    } as Project
   })
 }
 
-export async function createGoal(g: Pick<Goal, 'title' | 'description' | 'target_date'> & { workspace_id?: string | null }) {
+export async function createProject(g: Pick<Project, 'title' | 'description' | 'target_date'> & { workspace_id?: string | null }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
   const { data, error } = await supabase
     .from('goals').insert({ ...g, user_id: user.id }).select().single()
   if (error) throw error
-  return data as Goal
+  return data as Project
 }
 
-export async function updateGoal(id: string, updates: Partial<Goal>) {
+export async function updateProject(id: string, updates: Partial<Project>) {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('goals').update(updates).eq('id', id).select().single()
   if (error) throw error
-  return data as Goal
+  return data as Project
 }
 
-export async function deleteGoal(id: string) {
+export async function deleteProject(id: string) {
   const supabase = createClient()
   const { error } = await supabase.from('goals').delete().eq('id', id)
   if (error) throw error

@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'ProjectMana',
-  description: 'Personal task manager with projects, goals, and priorities',
+  description: 'Personal task manager with projects, streams, and priorities',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

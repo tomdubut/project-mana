@@ -1,7 +1,7 @@
 export type TaskStatus   = 'todo' | 'in_progress' | 'done' | 'blocked'
 export type TaskPriority = 'high' | 'normal' | 'low'
 
-export interface Goal {
+export interface Project {
   id: string
   user_id: string
   title: string
@@ -29,7 +29,7 @@ export interface WorkStream {
   archived: boolean
   created_at: string
   updated_at: string
-  goal?: Goal | null
+  goal?: Project | null
 }
 
 export interface Task {
@@ -48,7 +48,7 @@ export interface Task {
   created_at: string
   updated_at: string
   stream?: WorkStream | null
-  goal?: Goal | null
+  goal?: Project | null
 }
 
 export interface KnowledgePage {

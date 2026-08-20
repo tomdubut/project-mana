@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 <body>
   <div class="card">
     <h1>Connect Claude to Project Mana</h1>
-    <p>Paste your API token below to let Claude access your tasks, goals, and work streams.</p>
+    <p>Paste your API token below to let Claude access your tasks, projects, and work streams.</p>
     <form method="POST">
       <input type="hidden" name="redirect_uri" value="${encodeURIComponent(redirect_uri)}">
       <input type="hidden" name="state" value="${encodeURIComponent(state)}">
