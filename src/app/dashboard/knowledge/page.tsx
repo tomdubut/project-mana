@@ -12,6 +12,7 @@ import { Select } from '@/components/ui/select'
 import { cn, formatDate } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import type { KnowledgePage, WorkStream, Project } from '@/types'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 
 export default function KnowledgePage() {
   const [pages, setPages] = useState<KnowledgePage[]>([])
@@ -94,6 +95,13 @@ export default function KnowledgePage() {
       {/* Sidebar list */}
       <div className="w-64 border-r border-gray-100 bg-white flex flex-col flex-shrink-0">
         <div className="p-4 border-b border-gray-100">
+          <Breadcrumb
+            items={[
+              { label: activeWorkspace?.name ?? 'Workspace', color: activeWorkspace?.color },
+              { label: 'Knowledge' },
+            ]}
+            className="mb-3"
+          />
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">
               <BookOpen size={15} /> Knowledge

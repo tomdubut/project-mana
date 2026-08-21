@@ -9,6 +9,7 @@ import { cn, PRIORITY_CONFIG, formatDate, isOverdue } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import { TaskPanel } from '@/components/tasks/task-panel'
 import type { Task, WorkStream } from '@/types'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 
 export default function HomePage() {
   const [tasks, setTasks] = useState<Task[]>([])
@@ -90,6 +91,10 @@ export default function HomePage() {
 
       {/* Header */}
       <div>
+        <Breadcrumb items={[
+          { label: activeWorkspace?.name ?? 'Workspace', color: activeWorkspace?.color },
+          { label: 'Home' },
+        ]} className="mb-2" />
         <h1 className="text-2xl font-bold text-gray-900">{greeting()}</h1>
         <p className="text-sm text-gray-400 mt-0.5">{dateStr}</p>
       </div>

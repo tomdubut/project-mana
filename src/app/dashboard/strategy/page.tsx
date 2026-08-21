@@ -12,6 +12,7 @@ import { cn, STREAM_COLORS, formatDate, daysUntil } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import type { WorkStream, Project } from '@/types'
 import Link from 'next/link'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 
 export default function StrategyPage() {
   const [projects, setProjects] = useState<Project[]>([])
@@ -64,6 +65,10 @@ export default function StrategyPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
+      <Breadcrumb items={[
+        { label: activeWorkspace?.name ?? 'Workspace', color: activeWorkspace?.color },
+        { label: 'Strategy' },
+      ]} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <h1 className="text-xl font-bold text-gray-900">Strategy</h1>
         <div className="flex gap-2">

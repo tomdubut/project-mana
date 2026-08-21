@@ -14,6 +14,7 @@ import { TaskPanel } from '@/components/tasks/task-panel'
 import { cn, PRIORITY_CONFIG, STATUS_CONFIG, formatDate, isOverdue } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
 import type { Task, WorkStream, TaskStatus, TaskPriority } from '@/types'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 
 const ALL_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'blocked', 'done']
 const ALL_PRIORITIES: TaskPriority[] = ['high', 'normal', 'low']
@@ -141,6 +142,10 @@ export default function TasksPage() {
   return (
     <div className={cn('transition-all duration-300 ease-in-out', panelTask ? 'sm:mr-[420px]' : '')}>
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
+        <Breadcrumb items={[
+          { label: activeWorkspace?.name ?? 'Workspace', color: activeWorkspace?.color },
+          { label: 'Tasks' },
+        ]} />
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold text-gray-900">Tasks</h1>
         </div>

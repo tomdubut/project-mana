@@ -3,11 +3,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  ArrowLeft, Plus, Circle, CheckCircle2, Clock, Sparkles,
-  MoreHorizontal, Pencil, Trash2, BookOpen, Target, AlertTriangle,
+  Plus, Circle, CheckCircle2, Clock, Sparkles,
+  MoreHorizontal, Pencil, Trash2, BookOpen, AlertTriangle,
   ExternalLink, Archive,
 } from 'lucide-react'
 import Link from 'next/link'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { getStreams, updateStream, deleteStream } from '@/lib/queries/streams'
 import { getTasks, createTask, updateTask, deleteTask } from '@/lib/queries/tasks'
 import { getPages } from '@/lib/queries/knowledge'
@@ -129,10 +130,12 @@ export default function StreamDetailPage() {
     <div className={cn('transition-all duration-300 ease-in-out', panelTask ? 'sm:mr-[420px]' : '')}>
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
 
-        {/* Back */}
-        <Link href="/dashboard/strategy" className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 mb-6 transition-colors">
-          <ArrowLeft size={14} /> Strategy
-        </Link>
+        {/* Breadcrumb */}
+        <Breadcrumb items={[
+          { label: 'Strategy', href: '/dashboard/strategy' },
+          ...(goal ? [{ label: goal.title, href: '/dashboard/strategy' }] : []),
+          { label: stream.name, color: stream.color },
+        ]} />
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6">
@@ -152,11 +155,6 @@ export default function StreamDetailPage() {
                 </form>
               ) : (
                 <h1 className="text-xl font-bold text-gray-900">{stream.name}</h1>
-              )}
-              {goal && (
-                <Link href="/dashboard/strategy" className="flex items-center gap-1 text-sm text-indigo-500 hover:text-indigo-700 mt-0.5 transition-colors">
-                  <Target size={12} /> {goal.title}
-                </Link>
               )}
             </div>
           </div>
