@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Plus, Circle, CheckCircle2, Clock, Sparkles,
   MoreHorizontal, Pencil, Trash2, Filter, AlertTriangle,
+  CheckSquare, Square, ChevronDown, X,
 } from 'lucide-react'
 import { getTasks, createTask, updateTask, deleteTask } from '@/lib/queries/tasks'
 import { getStreams } from '@/lib/queries/streams'
@@ -27,6 +28,9 @@ export default function TasksPage() {
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all')
   const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all')
   const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkMenu, setBulkMenu] = useState<'status' | 'priority' | null>(null)
+  const [bulkWorking, setBulkWorking] = useState(false)
 
   const { activeWorkspace } = useWorkspace()
 
@@ -51,6 +55,48 @@ export default function TasksPage() {
     if (filterPriority !== 'all' && t.priority !== filterPriority) return false
     return true
   })
+
+  const visibleIds = [...overdueTasks, ...filtered].map((t) => t.id)
+  const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id))
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(visibleIds))
+    }
+  }
+
+  function clearSelection() {
+    setSelected(new Set())
+    setBulkMenu(null)
+  }
+
+  async function bulkUpdate(updates: Partial<Task>) {
+    setBulkWorking(true)
+    await Promise.all([...selected].map((id) => updateTask(id, updates)))
+    setBulkWorking(false)
+    clearSelection()
+    load()
+  }
+
+  async function bulkDelete() {
+    if (!confirm(`Delete ${selected.size} task${selected.size !== 1 ? 's' : ''}?`)) return
+    setBulkWorking(true)
+    await Promise.all([...selected].map((id) => deleteTask(id)))
+    setBulkWorking(false)
+    clearSelection()
+    load()
+  }
 
   async function handleQuickAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -89,6 +135,8 @@ export default function TasksPage() {
       <div className="text-gray-400 text-sm">Loading…</div>
     </div>
   )
+
+  const hasSelection = selected.size > 0
 
   return (
     <div className={cn('transition-all duration-300 ease-in-out', panelTask ? 'sm:mr-[420px]' : '')}>
@@ -148,6 +196,91 @@ export default function TasksPage() {
           </div>
         </div>
 
+        {/* Bulk action bar */}
+        {hasSelection && (
+          <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-xl flex-wrap">
+            <button onClick={toggleAll} className="text-indigo-600 hover:text-indigo-800 transition-colors">
+              {allSelected ? <CheckSquare size={15} /> : <Square size={15} />}
+            </button>
+            <span className="text-xs font-semibold text-indigo-700">{selected.size} selected</span>
+            <div className="flex-1" />
+
+            <button
+              onClick={() => bulkUpdate({ status: 'done' })}
+              disabled={bulkWorking}
+              className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+            >
+              <CheckCircle2 size={12} /> Mark done
+            </button>
+
+            {/* Status dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setBulkMenu(bulkMenu === 'status' ? null : 'status')}
+                disabled={bulkWorking}
+                className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-white border border-indigo-200 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50"
+              >
+                Status <ChevronDown size={11} />
+              </button>
+              {bulkMenu === 'status' && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setBulkMenu(null)} />
+                  <div className="absolute left-0 top-8 z-20 bg-white border border-gray-100 shadow-lg rounded-lg py-1 w-36">
+                    {ALL_STATUSES.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => { setBulkMenu(null); bulkUpdate({ status: s }) }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
+                      >
+                        <span className={cn('px-1.5 py-0.5 rounded-full font-medium', STATUS_CONFIG[s].color)}>{STATUS_CONFIG[s].label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Priority dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setBulkMenu(bulkMenu === 'priority' ? null : 'priority')}
+                disabled={bulkWorking}
+                className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-white border border-indigo-200 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50"
+              >
+                Priority <ChevronDown size={11} />
+              </button>
+              {bulkMenu === 'priority' && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setBulkMenu(null)} />
+                  <div className="absolute left-0 top-8 z-20 bg-white border border-gray-100 shadow-lg rounded-lg py-1 w-32">
+                    {(['urgent', ...ALL_PRIORITIES] as TaskPriority[]).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => { setBulkMenu(null); bulkUpdate({ priority: p }) }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
+                      >
+                        <span className={cn('px-1.5 py-0.5 rounded font-medium', PRIORITY_CONFIG[p].color)}>{PRIORITY_CONFIG[p].label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <button
+              onClick={bulkDelete}
+              disabled={bulkWorking}
+              className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+            >
+              <Trash2 size={12} /> Delete
+            </button>
+
+            <button onClick={clearSelection} className="text-indigo-400 hover:text-indigo-600 transition-colors ml-1">
+              <X size={15} />
+            </button>
+          </div>
+        )}
+
         {/* Overdue section */}
         {overdueTasks.length > 0 && (
           <div className="mb-6">
@@ -163,6 +296,9 @@ export default function TasksPage() {
                   key={task.id}
                   task={task}
                   streams={streams}
+                  selected={selected.has(task.id)}
+                  anySelected={hasSelection}
+                  onSelect={() => toggleSelect(task.id)}
                   menuOpen={menuOpen === task.id}
                   onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
                   onCloseMenu={() => setMenuOpen(null)}
@@ -186,6 +322,9 @@ export default function TasksPage() {
                 key={task.id}
                 task={task}
                 streams={streams}
+                selected={selected.has(task.id)}
+                anySelected={hasSelection}
+                onSelect={() => toggleSelect(task.id)}
                 menuOpen={menuOpen === task.id}
                 onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
                 onCloseMenu={() => setMenuOpen(null)}
@@ -210,8 +349,9 @@ export default function TasksPage() {
   )
 }
 
-function TaskRow({ task, streams, menuOpen, onMenu, onCloseMenu, onToggle, onOpen, onEdit, onDelete }: {
-  task: Task; streams: WorkStream[]; menuOpen: boolean; onMenu: () => void; onCloseMenu: () => void
+function TaskRow({ task, streams, selected, anySelected, onSelect, menuOpen, onMenu, onCloseMenu, onToggle, onOpen, onEdit, onDelete }: {
+  task: Task; streams: WorkStream[]; selected: boolean; anySelected: boolean
+  onSelect: () => void; menuOpen: boolean; onMenu: () => void; onCloseMenu: () => void
   onToggle: () => void; onOpen: () => void; onEdit: () => void; onDelete: () => void
 }) {
   const priority = PRIORITY_CONFIG[task.priority]
@@ -221,13 +361,28 @@ function TaskRow({ task, streams, menuOpen, onMenu, onCloseMenu, onToggle, onOpe
 
   return (
     <div className={cn(
-      'group flex items-center gap-3 px-4 py-2.5 bg-white rounded-xl border transition-all',
+      'group flex items-center gap-3 px-3 py-2.5 bg-white rounded-xl border transition-all',
       overdue ? 'border-red-100 hover:border-red-200' : 'border-gray-100 hover:border-gray-200',
-      task.status === 'done' && 'opacity-50'
+      selected && 'border-indigo-200 bg-indigo-50/40',
+      task.status === 'done' && !selected && 'opacity-50'
     )}>
+      {/* Checkbox */}
+      <button
+        onClick={onSelect}
+        className={cn(
+          'flex-shrink-0 transition-all text-gray-300',
+          selected ? 'text-indigo-500' : anySelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+          'hover:text-indigo-400'
+        )}
+      >
+        {selected ? <CheckSquare size={15} /> : <Square size={15} />}
+      </button>
+
+      {/* Done toggle */}
       <button onClick={onToggle} className="flex-shrink-0 text-gray-300 hover:text-green-500 transition-colors">
         {task.status === 'done' ? <CheckCircle2 size={17} className="text-green-500" /> : <Circle size={17} />}
       </button>
+
       <button onClick={onOpen} className={cn('flex-1 text-sm text-gray-800 truncate text-left hover:text-indigo-600 transition-colors', task.status === 'done' && 'line-through text-gray-400')}>
         {task.title}
       </button>
