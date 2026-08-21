@@ -47,6 +47,53 @@ ${JSON.stringify(taskSummaries, null, 2)}`,
   return JSON.parse(jsonMatch[0]) as ScoredTask[]
 }
 
+interface TaskSuggestion {
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+  due_date: string | null
+  reason: string
+}
+
+export async function suggestTaskFields(
+  title: string,
+  context: { streamName?: string | null; streamDeadline?: string | null; projectName?: string | null }
+): Promise<TaskSuggestion> {
+  const today = new Date().toISOString().slice(0, 10)
+  const contextLines = [
+    context.projectName && `Project: ${context.projectName}`,
+    context.streamName && `Work stream: ${context.streamName}`,
+    context.streamDeadline && `Stream deadline: ${context.streamDeadline}`,
+  ].filter(Boolean).join('\n')
+
+  const message = await getClient().messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 256,
+    messages: [
+      {
+        role: 'user',
+        content: `Today is ${today}. Suggest a priority and due date for this new task.
+
+Task: "${title}"
+${contextLines}
+
+Priority options: low, normal, high, urgent
+Due date: a YYYY-MM-DD date if it makes sense, or null if open-ended.
+
+Respond ONLY with valid JSON (no markdown): {"priority":"...","due_date":"YYYY-MM-DD or null","reason":"one short sentence explaining both choices"}`,
+      },
+    ],
+  })
+
+  const text = message.content[0].type === 'text' ? message.content[0].text : ''
+  const jsonMatch = text.replace(/```json\s*/g, '').replace(/```/g, '').match(/\{[\s\S]*\}/)
+  if (!jsonMatch) throw new Error('Unexpected AI response')
+  const result = JSON.parse(jsonMatch[0])
+  return {
+    priority: ['low', 'normal', 'high', 'urgent'].includes(result.priority) ? result.priority : 'normal',
+    due_date: result.due_date && result.due_date !== 'null' ? result.due_date : null,
+    reason: result.reason ?? '',
+  }
+}
+
 export async function getTodayFocus(tasks: Task[], streams: WorkStream[]): Promise<{ id: string; reason: string }[]> {
   if (tasks.length === 0) return []
 
