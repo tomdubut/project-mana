@@ -242,7 +242,7 @@ async function callTool(userId: string, name: string, args: Record<string, unkno
 
 WORKSPACES:
   - The user may have multiple workspaces (e.g. "Work", "Personal", "Side project")
-  - Each workspace has its own goals, streams, tasks, and knowledge pages
+  - Each workspace has its own projects, streams, tasks, and knowledge pages
   - ALWAYS call list_workspaces as your very first action — before anything else
   - When the user mentions a workspace by name, match it to the correct workspace_id
   - If the user does not specify a workspace, ask which one they mean — NEVER create anything without a workspace_id
@@ -250,37 +250,37 @@ WORKSPACES:
   - You cannot switch the active workspace in the user's browser (that is a UI action) — but you can read and write data in any workspace by passing the correct workspace_id to every tool
 
 HIERARCHY (always respect this order):
-  Goals → Work Streams → Tasks
-  - A Goal is the top-level objective (e.g. "Launch product", "Learn Spanish")
-  - A Work Stream is a category of work under a Goal (e.g. "Backend", "Marketing")
-  - A Task is a concrete action item, optionally linked to a Stream and/or Goal
+  Projects → Work Streams → Tasks
+  - A Project is the top-level objective (e.g. "Launch product", "Learn Spanish")
+  - A Work Stream is a category of work under a Project (e.g. "Backend", "Marketing")
+  - A Task is a concrete action item, optionally linked to a Stream and/or Project
 
 BEFORE CREATING ANYTHING:
   1. Call list_workspaces — identify the appropriate workspace
   2. Call list_projects with workspace_id — check if a relevant project already exists
-  3. Call list_streams with workspace_id — check if a relevant stream already exists under that goal
-  4. Only create a new goal or stream if nothing relevant exists
-  5. Always link tasks to the most relevant existing stream and goal when possible
+  3. Call list_streams with workspace_id — check if a relevant stream already exists under that project
+  4. Only create a new project or stream if nothing relevant exists
+  5. Always link tasks to the most relevant existing stream and project when possible
 
 CREATION ORDER (if starting fresh):
-  1. Create the Goal first (with workspace_id)
+  1. Create the Project first (with workspace_id)
   2. Create the Stream under that Project (set goal_id and workspace_id)
   3. Create Tasks linked to the Stream (set stream_id, goal_id, and workspace_id)
 
 KNOWLEDGE PAGES:
   - Use create_page / update_page to store notes, documentation, research, or reference material
-  - Link pages to a stream when the content belongs to a specific area of work
+  - Link pages to a project or stream when the content belongs to a specific area of work
   - Always pass workspace_id when creating pages
 
 GENERAL RULES:
-  - Never create duplicate goals or streams — always reuse existing ones when relevant
+  - Never create duplicate projects or streams — always reuse existing ones when relevant
   - When marking a task done, use update_task with status: "done"
   - Priorities: urgent > high > normal > low
   - Task statuses: todo, in_progress, blocked, done`,
 
       current_state: {
         workspaces: workspacesRes.data ?? [],
-        goals: goalsRes.data ?? [],
+        projects: goalsRes.data ?? [],
         streams: streamsRes.data ?? [],
         open_tasks: tasksRes.data ?? [],
         knowledge_pages: pagesRes.data ?? [],
