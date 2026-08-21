@@ -130,6 +130,24 @@ const TOOLS = [
     },
   },
   {
+    name: 'update_stream',
+    description: 'Update an existing work stream by ID',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: { type: 'string' },
+        name: { type: 'string' },
+        description: { type: 'string' },
+        color: { type: 'string', description: 'Hex color, e.g. #6366f1' },
+        is_ongoing: { type: 'boolean' },
+        deadline: { type: 'string', description: 'ISO date string' },
+        archived: { type: 'boolean' },
+        goal_id: { type: 'string' },
+      },
+    },
+  },
+  {
     name: 'delete_stream',
     description: 'Delete a work stream by ID',
     inputSchema: {
@@ -409,6 +427,18 @@ GENERAL RULES:
       .select('*, goal:goals(id,title)').eq('user_id', userId).eq('archived', false).order('name')
     if (args.workspace_id) q = q.eq('workspace_id', args.workspace_id)
     const { data, error } = await q
+    if (error) throw new Error(error.message)
+    return toolResult(data)
+  }
+
+  if (name === 'update_stream') {
+    if (!args.id) throw new Error('id is required')
+    const { data: existing } = await db.from('work_streams').select('id').eq('id', args.id).eq('user_id', userId).single()
+    if (!existing) throw new Error('Stream not found')
+    const allowed = ['name', 'description', 'color', 'is_ongoing', 'deadline', 'archived', 'goal_id']
+    const updates: Record<string, unknown> = {}
+    for (const k of allowed) { if (k in args) updates[k] = args[k] }
+    const { data, error } = await db.from('work_streams').update(updates).eq('id', args.id).select().single()
     if (error) throw new Error(error.message)
     return toolResult(data)
   }
