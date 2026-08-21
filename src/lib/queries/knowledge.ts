@@ -5,7 +5,7 @@ export async function getPages(streamId?: string, workspaceId?: string, goalId?:
   const supabase = createClient()
   let q = supabase
     .from('knowledge_pages')
-    .select('*, stream:work_streams(id,name,color), goal:goals(id,title)')
+    .select('*, stream:work_streams(id,name,color)')
     .order('updated_at', { ascending: false })
   if (streamId) q = q.eq('stream_id', streamId)
   if (goalId) q = q.eq('goal_id', goalId)
@@ -19,7 +19,7 @@ export async function getPage(id: string) {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('knowledge_pages')
-    .select('*, stream:work_streams(id,name,color), goal:goals(id,title)')
+    .select('*, stream:work_streams(id,name,color)')
     .eq('id', id).single()
   if (error) throw error
   return data as KnowledgePage
