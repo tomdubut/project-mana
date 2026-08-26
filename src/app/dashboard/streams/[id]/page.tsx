@@ -172,7 +172,7 @@ export default function StreamDetailPage() {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
           <StatCard label="Progress" value={`${progress}%`} sub={`${doneTasks} / ${totalTasks} done`} accent={progress === 100 ? 'green' : 'indigo'}>
             <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
               <div
@@ -301,7 +301,7 @@ function StatCard({ label, value, sub, accent, children }: {
   return (
     <div className="bg-white rounded-xl border border-gray-100 px-4 py-3">
       <p className="text-xs text-gray-400 mb-1">{label}</p>
-      <p className={cn('text-2xl font-bold', colors[accent])}>{value}</p>
+      <p className={cn('text-xl sm:text-2xl font-bold', colors[accent])}>{value}</p>
       <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
       {children}
     </div>
@@ -326,9 +326,9 @@ function TaskRow({ task, menuOpen, onMenu, onCloseMenu, onToggle, onOpen, onEdit
       <button onClick={onOpen} className={cn('flex-1 text-sm text-gray-800 truncate text-left hover:text-indigo-600 transition-colors', task.status === 'done' && 'line-through text-gray-400')}>
         {task.title}
       </button>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-1.5 flex-shrink-0">
         {task.ai_score !== null && (
-          <span className="text-xs text-indigo-400 flex items-center gap-0.5">
+          <span className="hidden sm:flex text-xs text-indigo-400 items-center gap-0.5">
             <Sparkles size={10} />{task.ai_score}
           </span>
         )}

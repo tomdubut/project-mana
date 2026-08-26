@@ -391,16 +391,16 @@ function TaskRow({ task, streams, selected, anySelected, onSelect, menuOpen, onM
       <button onClick={onOpen} className={cn('flex-1 text-sm text-gray-800 truncate text-left hover:text-indigo-600 transition-colors', task.status === 'done' && 'line-through text-gray-400')}>
         {task.title}
       </button>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-1.5 flex-shrink-0">
         {task.ai_score !== null && (
-          <span className="text-xs text-indigo-400 flex items-center gap-0.5">
+          <span className="hidden sm:flex text-xs text-indigo-400 items-center gap-0.5">
             <Sparkles size={10} />{task.ai_score}
           </span>
         )}
-        <span className={cn('text-xs px-1.5 py-0.5 rounded-full font-medium', status.color)}>{status.label}</span>
+        <span className={cn('hidden sm:inline text-xs px-1.5 py-0.5 rounded-full font-medium', status.color)}>{status.label}</span>
         <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium', priority.color)}>{priority.label}</span>
         {stream && (
-          <span className="text-xs text-gray-400 flex items-center gap-1">
+          <span className="hidden sm:flex text-xs text-gray-400 items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stream.color }} />
             {stream.name}
           </span>

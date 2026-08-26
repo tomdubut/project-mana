@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, BookOpen, FileText, Pencil, Trash2, X, Save, Clock, Target, Layers } from 'lucide-react'
+import { Plus, BookOpen, FileText, Pencil, Trash2, X, Save, Clock, Target, Layers, Menu } from 'lucide-react'
 import MDEditor from '@uiw/react-md-editor'
 import { getPages, createPage, updatePage, deletePage } from '@/lib/queries/knowledge'
 import { getStreams } from '@/lib/queries/streams'
@@ -19,6 +19,7 @@ export default function KnowledgePage() {
   const [streams, setStreams] = useState<WorkStream[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [selected, setSelected] = useState<KnowledgePage | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [filterStream, setFilterStream] = useState('')
@@ -45,6 +46,7 @@ export default function KnowledgePage() {
     setSelected(page)
     setDraft({ title: page.title, content: page.content, stream_id: page.stream_id ?? '', goal_id: page.goal_id ?? '' })
     setEditing(false)
+    setSidebarOpen(false)
   }
 
   async function handleSave() {
@@ -91,9 +93,18 @@ export default function KnowledgePage() {
   })
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-[calc(100dvh-4rem)] md:h-screen overflow-hidden relative">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-30 bg-black/30 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* Sidebar list */}
-      <div className="w-64 border-r border-gray-100 bg-white flex flex-col flex-shrink-0">
+      <div className={cn(
+        'flex-shrink-0 border-r border-gray-100 bg-white flex flex-col z-40 transition-transform duration-200',
+        'fixed md:relative inset-y-0 left-0 w-72 md:w-64',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      )}>
         <div className="p-4 border-b border-gray-100">
           <Breadcrumb
             items={[
@@ -171,70 +182,63 @@ export default function KnowledgePage() {
       </div>
 
       {/* Editor / viewer */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {selected ? (
           <>
-            <div className="flex items-center justify-between px-4 sm:px-8 py-4 border-b border-gray-100 bg-white">
-              {editing ? (
-                <Input
-                  value={draft.title}
-                  onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-                  className="text-lg font-bold border-0 shadow-none px-0 focus:ring-0 text-gray-900 flex-1"
-                />
-              ) : (
-                <h1 className="text-lg font-bold text-gray-900 flex-1">{selected.title}</h1>
-              )}
-              <div className="flex items-center gap-2 ml-4">
+            {/* Header row */}
+            <div className="flex flex-col px-4 sm:px-6 py-3 border-b border-gray-100 bg-white gap-2">
+              <div className="flex items-center gap-2">
+                {/* Mobile: hamburger to open sidebar */}
+                <button onClick={() => setSidebarOpen(true)} className="md:hidden text-gray-400 hover:text-gray-700 p-1 -ml-1 flex-shrink-0">
+                  <Menu size={18} />
+                </button>
                 {editing ? (
-                  <>
-                    <Select
-                      value={draft.goal_id}
-                      onChange={(e) => setDraft({ ...draft, goal_id: e.target.value, stream_id: '' })}
-                      className="text-xs w-36"
-                    >
-                      <option value="">No project</option>
-                      {projects.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
-                    </Select>
-                    <Select
-                      value={draft.stream_id}
-                      onChange={(e) => setDraft({ ...draft, stream_id: e.target.value, goal_id: '' })}
-                      className="text-xs w-36"
-                    >
-                      <option value="">No stream</option>
-                      {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </Select>
-                    <Button size="sm" onClick={handleSave} disabled={saving}>
-                      <Save size={13} /> {saving ? 'Saving…' : 'Save'}
-                    </Button>
-                    <button onClick={() => { setEditing(false); setDraft({ title: selected.title, content: selected.content, stream_id: selected.stream_id ?? '', goal_id: selected.goal_id ?? '' }) }}
-                      className="text-gray-400 hover:text-gray-600 transition-colors">
-                      <X size={18} />
-                    </button>
-                  </>
+                  <Input
+                    value={draft.title}
+                    onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                    className="text-base font-bold border-0 shadow-none px-0 focus:ring-0 text-gray-900 flex-1 min-w-0"
+                  />
                 ) : (
-                  <>
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                      {selected.goal && (
-                        <span className="flex items-center gap-1 text-indigo-500">
-                          <Target size={11} /> {selected.goal.title}
-                        </span>
-                      )}
-                      {selected.stream && (
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: selected.stream.color }} />
-                          {selected.stream.name}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Clock size={11} /> {formatDate(selected.updated_at)}
-                      </span>
-                    </div>
-                    <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
-                      <Pencil size={13} /> Edit
-                    </Button>
-                  </>
+                  <h1 className="text-base font-bold text-gray-900 flex-1 min-w-0 truncate">{selected.title}</h1>
                 )}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {editing ? (
+                    <>
+                      <Button size="sm" onClick={handleSave} disabled={saving}>
+                        <Save size={13} /> {saving ? 'Saving…' : 'Save'}
+                      </Button>
+                      <button onClick={() => { setEditing(false); setDraft({ title: selected.title, content: selected.content, stream_id: selected.stream_id ?? '', goal_id: selected.goal_id ?? '' }) }}
+                        className="text-gray-400 hover:text-gray-600 transition-colors p-1">
+                        <X size={16} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400">
+                        {selected.goal && <span className="flex items-center gap-1 text-indigo-500"><Target size={11} /> {selected.goal.title}</span>}
+                        {selected.stream && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: selected.stream.color }} />{selected.stream.name}</span>}
+                        <span className="flex items-center gap-1"><Clock size={11} /> {formatDate(selected.updated_at)}</span>
+                      </div>
+                      <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+                        <Pencil size={13} /> Edit
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
+              {/* Editing: selects on second row (full width on mobile) */}
+              {editing && (
+                <div className="flex gap-2 flex-wrap">
+                  <Select value={draft.goal_id} onChange={(e) => setDraft({ ...draft, goal_id: e.target.value, stream_id: '' })} className="text-xs flex-1 min-w-[120px]">
+                    <option value="">No project</option>
+                    {projects.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
+                  </Select>
+                  <Select value={draft.stream_id} onChange={(e) => setDraft({ ...draft, stream_id: e.target.value, goal_id: '' })} className="text-xs flex-1 min-w-[120px]">
+                    <option value="">No stream</option>
+                    {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </Select>
+                </div>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
@@ -261,7 +265,10 @@ export default function KnowledgePage() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-400">
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+            <button onClick={() => setSidebarOpen(true)} className="md:hidden mb-4 flex items-center gap-2 text-sm text-indigo-600 border border-indigo-200 rounded-xl px-4 py-2">
+              <Menu size={15} /> Browse pages
+            </button>
             <div className="text-center">
               <BookOpen size={40} className="mx-auto mb-3 opacity-20" />
               <p className="text-sm">Select a page to view</p>
