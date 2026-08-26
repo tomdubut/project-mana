@@ -145,9 +145,9 @@ export default function ProjectDetailPage() {
         ]} />
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-5">
+        <div className="flex items-start justify-between gap-2 mb-5">
           <div className="flex items-start gap-3 min-w-0">
-            <Target size={20} className="text-indigo-500 flex-shrink-0 mt-0.5" />
+            <Target size={18} className="text-indigo-500 flex-shrink-0 mt-1" />
             <div className="min-w-0">
               {editing ? (
                 <form onSubmit={handleSaveTitle} className="flex items-center gap-2">
@@ -175,7 +175,7 @@ export default function ProjectDetailPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-3 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           <StatCard label="Progress" value={`${progress}%`} sub={`${doneTasks}/${tasks.length} done`} accent={progress === 100 ? 'green' : 'indigo'}>
             <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
               <div className={cn('h-full rounded-full', progress === 100 ? 'bg-green-500' : 'bg-indigo-500')} style={{ width: `${progress}%` }} />
@@ -204,16 +204,18 @@ export default function ProjectDetailPage() {
         </div>
 
         {/* Quick add */}
-        <form onSubmit={handleQuickAdd} className="flex gap-2 mb-6">
+        <form onSubmit={handleQuickAdd} className="flex flex-col sm:flex-row gap-2 mb-6">
           <Input value={quickTitle} onChange={(e) => setQuickTitle(e.target.value)} placeholder="Add a task to this project…" className="flex-1" />
-          {streams.length > 0 && (
-            <select value={quickStreamId} onChange={(e) => setQuickStreamId(e.target.value)}
-              className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 focus:outline-none focus:border-indigo-400">
-              <option value="">No stream</option>
-              {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          )}
-          <Button type="submit" disabled={adding || !quickTitle.trim()} size="sm"><Plus size={15} /> Add</Button>
+          <div className="flex gap-2">
+            {streams.length > 0 && (
+              <select value={quickStreamId} onChange={(e) => setQuickStreamId(e.target.value)}
+                className="flex-1 sm:flex-none text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 focus:outline-none focus:border-indigo-400">
+                <option value="">No stream</option>
+                {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            )}
+            <Button type="submit" disabled={adding || !quickTitle.trim()} size="sm" className="flex-shrink-0"><Plus size={15} /> Add</Button>
+          </div>
         </form>
 
         {/* ── OVERVIEW TAB ── */}
@@ -339,8 +341,8 @@ export default function ProjectDetailPage() {
         {/* ── BOARD TAB ── */}
         {tab === 'board' && (
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="overflow-x-auto -mx-4 px-4">
-              <div className="flex gap-4 min-w-[640px] pb-4">
+            <div className="overflow-x-auto -mx-4 px-4 pb-1">
+              <div className="flex gap-3 pb-4" style={{ minWidth: `${BOARD_COLUMNS.length * 200}px` }}>
                 {BOARD_COLUMNS.map(({ status, label }) => {
                   const col = tasks.filter((t) => t.status === status)
                   const conf = STATUS_CONFIG[status]

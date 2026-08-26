@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ListTodo, CheckSquare, BookOpen, Settings, LogOut, Zap, Plus, ChevronDown, ChevronRight, Check, Home, Target, FolderOpen } from 'lucide-react'
+import { ListTodo, CheckSquare, BookOpen, Settings, LogOut, Zap, Plus, ChevronDown, ChevronRight, Check, Home, Target, FolderOpen, Layers } from 'lucide-react'
 import { cn, STREAM_COLORS, isOverdue } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
@@ -30,6 +30,8 @@ export function Sidebar() {
   const [projectsOpen, setProjectsOpen] = useState(true)
   const [wsMenuOpen, setWsMenuOpen] = useState(false)
   const [mobileWsOpen, setMobileWsOpen] = useState(false)
+  const [mobileProjectsOpen, setMobileProjectsOpen] = useState(false)
+  const [mobileExpandedProjects, setMobileExpandedProjects] = useState<Set<string>>(new Set())
   const [showNewWs, setShowNewWs] = useState(false)
   const [newWsName, setNewWsName] = useState('')
   const [newWsColor, setNewWsColor] = useState(STREAM_COLORS[0])
@@ -100,10 +102,9 @@ export function Sidebar() {
   const unassignedStreams = streams.filter((s) => !s.goal_id)
 
   const MOBILE_NAV = [
-    { key: 'home',     label: 'Home',     icon: Home        },
-    { key: 'todo',     label: 'To-Do',    icon: ListTodo    },
-    { key: 'tasks',    label: 'Tasks',    icon: CheckSquare },
-    { key: 'knowledge',label: 'Knowledge',icon: BookOpen    },
+    { key: 'home',  label: 'Home',  icon: Home        },
+    { key: 'todo',  label: 'To-Do', icon: ListTodo    },
+    { key: 'tasks', label: 'Tasks', icon: CheckSquare },
   ]
 
   return (
@@ -371,6 +372,18 @@ export function Sidebar() {
           {label}
         </Link>
       ))}
+      {/* Projects */}
+      <button
+        onClick={() => { setMobileProjectsOpen(true) }}
+        className={cn(
+          'flex-1 flex flex-col items-center justify-center py-2 gap-1 text-xs font-medium transition-colors',
+          pathname.includes('/projects') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-900'
+        )}
+      >
+        <Layers size={20} />
+        Projects
+      </button>
+      {/* Workspace */}
       <button
         onClick={() => { setMobileWsOpen(true); setShowNewWs(false) }}
         className="flex-1 flex flex-col items-center justify-center py-2 gap-1 text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors"
@@ -378,16 +391,6 @@ export function Sidebar() {
         <span className="w-5 h-5 rounded-full border-2 border-gray-300" style={{ backgroundColor: activeWorkspace?.color ?? '#6366f1' }} />
         <span className="truncate max-w-[52px]">{activeWorkspace?.name ?? 'WS'}</span>
       </button>
-      <Link
-        href="/dashboard/settings"
-        className={cn(
-          'flex-1 flex flex-col items-center justify-center py-2 gap-1 text-xs font-medium transition-colors',
-          pathname.endsWith('settings') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-900'
-        )}
-      >
-        <Settings size={20} />
-        Settings
-      </Link>
     </nav>
 
     {/* Mobile workspace bottom sheet */}
@@ -448,6 +451,104 @@ export function Sidebar() {
                 <Plus size={14} /> New workspace
               </button>
             )}
+          </div>
+        </div>
+      </>
+    )}
+
+    {/* Mobile projects bottom sheet */}
+    {mobileProjectsOpen && (
+      <>
+        <div className="fixed inset-0 z-50 bg-black/40 md:hidden" onClick={() => setMobileProjectsOpen(false)} />
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl md:hidden max-h-[80vh] flex flex-col">
+          <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-gray-100 flex-shrink-0">
+            <span className="text-sm font-semibold text-gray-900">Projects</span>
+            <button onClick={() => setMobileProjectsOpen(false)} className="text-gray-400 hover:text-gray-600 p-1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div className="overflow-y-auto flex-1 px-2 py-2 space-y-0.5">
+            {projects.length === 0 && (
+              <p className="px-3 py-4 text-sm text-gray-400 text-center italic">No projects yet</p>
+            )}
+            {projects.map((project) => {
+              const projectStreams = streams.filter((s) => s.goal_id === project.id)
+              const isExpanded = mobileExpandedProjects.has(project.id)
+              return (
+                <div key={project.id}>
+                  <div className="flex items-center gap-1 rounded-xl hover:bg-gray-50">
+                    <button
+                      onClick={() => setMobileExpandedProjects((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(project.id)) next.delete(project.id)
+                        else next.add(project.id)
+                        return next
+                      })}
+                      className="flex-shrink-0 p-2 text-gray-300"
+                    >
+                      {projectStreams.length > 0
+                        ? (isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)
+                        : <span className="w-3.5 h-3.5 block" />}
+                    </button>
+                    <Link
+                      href={`/dashboard/projects/${project.id}`}
+                      onClick={() => setMobileProjectsOpen(false)}
+                      className="flex items-center gap-2 flex-1 min-w-0 py-2.5 pr-2 text-sm font-medium text-gray-800"
+                    >
+                      <Target size={14} className="text-indigo-400 flex-shrink-0" />
+                      <span className="truncate">{project.title}</span>
+                    </Link>
+                    {project.task_count !== undefined && project.task_count > 0 && (
+                      <span className="text-xs text-gray-400 flex-shrink-0 pr-3">{project.task_count}</span>
+                    )}
+                  </div>
+                  {isExpanded && projectStreams.map((s) => {
+                    const count = taskCounts[s.id] ?? 0
+                    return (
+                      <Link
+                        key={s.id}
+                        href={`/dashboard/streams/${s.id}`}
+                        onClick={() => setMobileProjectsOpen(false)}
+                        className="flex items-center gap-2 pl-10 pr-3 py-2.5 rounded-xl hover:bg-gray-50 text-sm text-gray-600"
+                      >
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                        <span className="truncate flex-1">{s.name}</span>
+                        {count > 0 && <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">{count}</span>}
+                      </Link>
+                    )
+                  })}
+                </div>
+              )
+            })}
+            {unassignedStreams.length > 0 && (
+              <div className="mt-2 border-t border-gray-50 pt-2">
+                <p className="px-3 pb-1 text-xs text-gray-400 font-medium">Other streams</p>
+                {unassignedStreams.map((s) => {
+                  const count = taskCounts[s.id] ?? 0
+                  return (
+                    <Link
+                      key={s.id}
+                      href={`/dashboard/streams/${s.id}`}
+                      onClick={() => setMobileProjectsOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-gray-50 text-sm text-gray-600"
+                    >
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                      <span className="truncate flex-1">{s.name}</span>
+                      {count > 0 && <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">{count}</span>}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+          <div className="px-4 py-3 border-t border-gray-100 flex-shrink-0">
+            <Link
+              href="/dashboard/strategy"
+              onClick={() => setMobileProjectsOpen(false)}
+              className="flex items-center justify-center gap-2 w-full py-2.5 text-sm text-indigo-600 font-medium rounded-xl border border-indigo-100 hover:bg-indigo-50 transition-colors"
+            >
+              <Plus size={14} /> New project
+            </Link>
           </div>
         </div>
       </>
