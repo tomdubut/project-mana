@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ListTodo, CheckSquare, BookOpen, Settings, LogOut, Zap, Plus, ChevronDown, ChevronRight, Check, Home, Target, FolderOpen, Layers } from 'lucide-react'
+import { ListTodo, CheckSquare, BookOpen, Settings, LogOut, Zap, Plus, ChevronDown, ChevronRight, Check, Home, Target, FolderOpen, Layers, Search } from 'lucide-react'
 import { cn, STREAM_COLORS, isOverdue } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
@@ -19,7 +19,7 @@ const VIEWS = [
   { key: 'knowledge', label: 'Knowledge',   icon: BookOpen   },
 ]
 
-export function Sidebar() {
+export function Sidebar({ onSearch }: { onSearch?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const [streams, setStreams] = useState<WorkStream[]>([])
@@ -186,6 +186,18 @@ export function Sidebar() {
             </div>
           </>
         )}
+      </div>
+
+      {/* Search */}
+      <div className="px-2 py-2 border-b border-gray-100">
+        <button
+          onClick={onSearch}
+          className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors"
+        >
+          <Search size={15} />
+          <span className="flex-1 text-left">Search…</span>
+          <kbd className="text-[10px] text-gray-300 border border-gray-200 rounded px-1 py-0.5 font-mono">⌘K</kbd>
+        </button>
       </div>
 
       {/* Main nav */}
@@ -372,6 +384,14 @@ export function Sidebar() {
           {label}
         </Link>
       ))}
+      {/* Search */}
+      <button
+        onClick={onSearch}
+        className="flex-1 flex flex-col items-center justify-center py-2 gap-1 text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors"
+      >
+        <Search size={20} />
+        Search
+      </button>
       {/* Projects */}
       <button
         onClick={() => { setMobileProjectsOpen(true) }}
