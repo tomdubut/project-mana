@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
-  PointerSensor, useSensor, useSensors, useDroppable, useDraggable,
+  MouseSensor, TouchSensor, useSensor, useSensors, useDroppable, useDraggable,
 } from '@dnd-kit/core'
 import Link from 'next/link'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
@@ -81,7 +81,10 @@ export default function ProjectDetailPage() {
   const progress = tasks.length > 0 ? Math.round((doneTasks / tasks.length) * 100) : 0
   const streamMap = Object.fromEntries(streams.map((s) => [s.id, s]))
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 8 } }),
+  )
 
   function handleDragStart(event: DragStartEvent) {
     const task = tasks.find((t) => t.id === event.active.id)
