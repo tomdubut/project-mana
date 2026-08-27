@@ -116,6 +116,7 @@ export default function ProjectDetailPage() {
       due_date: null,
       ai_score: null,
       ai_reason: null,
+      recurrence: 'none',
       workspace_id: activeWorkspace?.id ?? null,
     })
     setQuickTitle('')

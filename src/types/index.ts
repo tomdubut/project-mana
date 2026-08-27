@@ -21,6 +21,7 @@ export interface Project {
 export interface WorkStream {
   id: string
   user_id: string
+  workspace_id: string | null
   goal_id: string | null
   name: string
   description: string | null
@@ -36,6 +37,7 @@ export interface WorkStream {
 export interface Task {
   id: string
   user_id: string
+  workspace_id: string | null
   stream_id: string | null
   goal_id: string | null
   title: string
