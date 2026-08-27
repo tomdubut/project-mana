@@ -3,13 +3,40 @@
 :root {
   --background: #f8f9fb;
   --foreground: #111827;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+html {
+  /* Prevent rubber-band scroll revealing white background */
+  background: #6366f1;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  /* Prevent overscroll bounce on iOS */
+  overscroll-behavior: none;
+  /* Remove tap highlight on iOS */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent iOS input zoom — minimum 16px font */
+input, textarea, select {
+  font-size: max(16px, 1em);
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 9999px; }
+
+/* Safe area utilities */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}

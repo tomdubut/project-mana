@@ -1,0 +1,24 @@
+{
+  "name": "ProjectMana",
+  "short_name": "ProjectMana",
+  "description": "Personal task manager with projects, streams, and priorities",
+  "start_url": "/dashboard/home",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#6366f1",
+  "background_color": "#f8f9fb",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

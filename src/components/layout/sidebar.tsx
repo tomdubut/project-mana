@@ -353,7 +353,7 @@ export function Sidebar() {
     </aside>
 
     {/* Mobile bottom nav */}
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex md:hidden pb-safe">
       {MOBILE_NAV.map(({ key, label, icon: Icon }) => (
         <Link
           key={key}
