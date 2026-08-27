@@ -1,5 +1,6 @@
-export type TaskStatus   = 'todo' | 'in_progress' | 'done' | 'blocked'
-export type TaskPriority = 'high' | 'normal' | 'low'
+export type TaskStatus     = 'todo' | 'in_progress' | 'done' | 'blocked'
+export type TaskPriority   = 'high' | 'normal' | 'low'
+export type TaskRecurrence = 'none' | 'daily' | 'weekly' | 'monthly'
 
 export interface Project {
   id: string
@@ -44,6 +45,7 @@ export interface Task {
   due_date: string | null
   ai_score: number | null
   ai_reason: string | null
+  recurrence: TaskRecurrence
   completed_at: string | null
   created_at: string
   updated_at: string

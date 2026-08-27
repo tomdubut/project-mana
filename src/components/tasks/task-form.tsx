@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Sparkles, X } from 'lucide-react'
+import { Sparkles, X, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { createTask, updateTask } from '@/lib/queries/tasks'
-import type { Task, WorkStream, TaskStatus, TaskPriority } from '@/types'
+import type { Task, WorkStream, TaskStatus, TaskPriority, TaskRecurrence } from '@/types'
 
 interface TaskFormProps {
   task?: Task
@@ -31,6 +31,7 @@ export function TaskForm({ task, streams, onSuccess, onCancel }: TaskFormProps) 
     priority: task?.priority ?? 'normal' as TaskPriority,
     stream_id: task?.stream_id ?? '',
     due_date: task?.due_date ?? '',
+    recurrence: (task?.recurrence ?? 'none') as TaskRecurrence,
   })
   const [suggestion, setSuggestion] = useState<AISuggestion | null>(null)
   const [suggesting, setSuggesting] = useState(false)
@@ -86,6 +87,7 @@ export function TaskForm({ task, streams, onSuccess, onCancel }: TaskFormProps) 
         due_date: form.due_date || null,
         ai_score: task?.ai_score ?? null,
         ai_reason: task?.ai_reason ?? null,
+        recurrence: form.recurrence,
       }
       if (task) await updateTask(task.id, payload)
       else await createTask(payload as Parameters<typeof createTask>[0])
@@ -176,9 +178,22 @@ export function TaskForm({ task, streams, onSuccess, onCancel }: TaskFormProps) 
           {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </Select>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Due date</label>
-        <Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Due date</label>
+          <Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <RefreshCw size={11} /> Repeat
+          </label>
+          <Select value={form.recurrence} onChange={(e) => setForm({ ...form, recurrence: e.target.value as TaskRecurrence })}>
+            <option value="none">No repeat</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </Select>
+        </div>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex justify-end gap-2 pt-1">

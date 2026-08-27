@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Plus, Circle, CheckCircle2, Clock, Sparkles,
   MoreHorizontal, Pencil, Trash2, Filter, AlertTriangle,
-  CheckSquare, Square, ChevronDown, X,
+  CheckSquare, Square, ChevronDown, X, RefreshCw,
 } from 'lucide-react'
 import { getTasks, createTask, updateTask, deleteTask } from '@/lib/queries/tasks'
 import { getStreams } from '@/lib/queries/streams'
@@ -403,6 +403,11 @@ function TaskRow({ task, streams, selected, anySelected, onSelect, menuOpen, onM
           <span className="hidden sm:flex text-xs text-gray-400 items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stream.color }} />
             {stream.name}
+          </span>
+        )}
+        {task.recurrence && task.recurrence !== 'none' && (
+          <span className="hidden sm:flex text-xs text-indigo-400 items-center gap-0.5" title={`Repeats ${task.recurrence}`}>
+            <RefreshCw size={10} />
           </span>
         )}
         {task.due_date && (

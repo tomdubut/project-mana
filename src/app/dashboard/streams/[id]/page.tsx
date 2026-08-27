@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import {
   Plus, Circle, CheckCircle2, Clock, Sparkles,
   MoreHorizontal, Pencil, Trash2, BookOpen, AlertTriangle,
-  ExternalLink, Archive,
+  ExternalLink, Archive, RefreshCw,
 } from 'lucide-react'
 import Link from 'next/link'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
@@ -333,6 +333,9 @@ function TaskRow({ task, menuOpen, onMenu, onCloseMenu, onToggle, onOpen, onEdit
           </span>
         )}
         <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium', priority.color)}>{priority.label}</span>
+        {task.recurrence && task.recurrence !== 'none' && (
+          <span className="text-xs text-indigo-400" title={`Repeats ${task.recurrence}`}><RefreshCw size={10} /></span>
+        )}
         {task.due_date && (
           <span className={cn('text-xs flex items-center gap-1', overdue ? 'text-red-500' : 'text-gray-400')}>
             <Clock size={10} />{formatDate(task.due_date)}

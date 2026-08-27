@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import type { Task, TaskStatus, TaskPriority } from '@/types'
+import type { Task, TaskStatus, TaskPriority, TaskRecurrence } from '@/types'
 
 const SELECT = '*, stream:work_streams(id,name,color), goal:goals(id,title)'
 
@@ -39,14 +39,45 @@ export async function createTask(t: Omit<Task, 'id' | 'user_id' | 'created_at' |
   return data as Task
 }
 
+function nextDueDate(due: string | null, recurrence: TaskRecurrence): string | null {
+  if (!due || recurrence === 'none') return null
+  const d = new Date(due)
+  if (recurrence === 'daily')   d.setDate(d.getDate() + 1)
+  if (recurrence === 'weekly')  d.setDate(d.getDate() + 7)
+  if (recurrence === 'monthly') d.setMonth(d.getMonth() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
 export async function updateTask(id: string, updates: Partial<Task>) {
   const supabase = createClient()
   if (updates.status === 'done' && !updates.completed_at) updates.completed_at = new Date().toISOString()
   if (updates.status && updates.status !== 'done') updates.completed_at = null
+
   const { data, error } = await supabase
     .from('tasks').update(updates).eq('id', id).select(SELECT).single()
   if (error) throw error
-  return data as Task
+  const task = data as Task
+
+  // Spawn next occurrence when a recurring task is completed
+  if (updates.status === 'done' && task.recurrence && task.recurrence !== 'none') {
+    const next = nextDueDate(task.due_date, task.recurrence)
+    await supabase.from('tasks').insert({
+      user_id: task.user_id,
+      title: task.title,
+      description: task.description,
+      status: 'todo',
+      priority: task.priority,
+      stream_id: task.stream_id,
+      goal_id: task.goal_id,
+      due_date: next,
+      recurrence: task.recurrence,
+      ai_score: null,
+      ai_reason: null,
+      workspace_id: (task as any).workspace_id ?? null,
+    })
+  }
+
+  return task
 }
 
 export async function deleteTask(id: string) {
