@@ -476,10 +476,15 @@ GENERAL RULES:
 
   if (name === 'create_page') {
     if (!args.title) throw new Error('title is required')
-    const { data, error } = await db.from('knowledge_pages')
-      .insert({ title: args.title, content: args.content ?? '', stream_id: args.stream_id ?? null,
-        goal_id: args.goal_id ?? null, user_id: userId, workspace_id: args.workspace_id ?? null })
-      .select().single()
+    const insert: Record<string, unknown> = {
+      title: args.title,
+      content: args.content ?? '',
+      user_id: userId,
+    }
+    if (args.stream_id)    insert.stream_id    = args.stream_id
+    if (args.goal_id)      insert.goal_id      = args.goal_id
+    if (args.workspace_id) insert.workspace_id = args.workspace_id
+    const { data, error } = await db.from('knowledge_pages').insert(insert).select().single()
     if (error) throw new Error(error.message)
     return toolResult(data)
   }
