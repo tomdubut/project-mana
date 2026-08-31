@@ -282,7 +282,7 @@ export default function ProjectDetailPage() {
                       ) : (
                         <div className="divide-y divide-gray-50">
                           {openStreamTasks.map((task) => (
-                            <OverviewTaskRow key={task.id} task={task} onToggle={async () => { await updateTask(task.id, { status: 'done' }); load() }} onOpen={() => setPanelTask(task)} />
+                            <OverviewTaskRow key={task.id} task={task} active={panelTask?.id === task.id} onToggle={async () => { await updateTask(task.id, { status: 'done' }); load() }} onOpen={() => setPanelTask(task)} />
                           ))}
                           {doneStreamTasks.length > 0 && (
                             <details className="group">
@@ -291,7 +291,7 @@ export default function ProjectDetailPage() {
                                 {doneStreamTasks.length} completed
                               </summary>
                               {doneStreamTasks.map((task) => (
-                                <OverviewTaskRow key={task.id} task={task} onToggle={async () => { await updateTask(task.id, { status: 'todo' }); load() }} onOpen={() => setPanelTask(task)} />
+                                <OverviewTaskRow key={task.id} task={task} active={panelTask?.id === task.id} onToggle={async () => { await updateTask(task.id, { status: 'todo' }); load() }} onOpen={() => setPanelTask(task)} />
                               ))}
                             </details>
                           )}
@@ -311,7 +311,7 @@ export default function ProjectDetailPage() {
                 </div>
                 <div className="divide-y divide-gray-50">
                   {tasks.filter((t) => !t.stream_id).map((task) => (
-                    <OverviewTaskRow key={task.id} task={task} onToggle={async () => { await updateTask(task.id, { status: task.status === 'done' ? 'todo' : 'done' }); load() }} onOpen={() => setPanelTask(task)} />
+                    <OverviewTaskRow key={task.id} task={task} active={panelTask?.id === task.id} onToggle={async () => { await updateTask(task.id, { status: task.status === 'done' ? 'todo' : 'done' }); load() }} onOpen={() => setPanelTask(task)} />
                   ))}
                 </div>
               </div>
@@ -353,6 +353,7 @@ export default function ProjectDetailPage() {
                           key={task.id}
                           task={task}
                           stream={task.stream_id ? streamMap[task.stream_id] : null}
+                          active={panelTask?.id === task.id}
                           onOpen={() => setPanelTask(task)}
                           onToggle={async () => { await updateTask(task.id, { status: task.status === 'done' ? 'todo' : 'done' }); load() }}
                         />
@@ -450,8 +451,8 @@ function BoardColumn({ status, label, conf, count, children }: {
   )
 }
 
-function BoardCard({ task, stream, onOpen, onToggle }: {
-  task: Task; stream: WorkStream | null; onOpen: () => void; onToggle: () => void
+function BoardCard({ task, stream, active, onOpen, onToggle }: {
+  task: Task; stream: WorkStream | null; active?: boolean; onOpen: () => void; onToggle: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id })
   const priority = PRIORITY_CONFIG[task.priority]
@@ -468,7 +469,8 @@ function BoardCard({ task, stream, onOpen, onToggle }: {
       {...listeners}
       {...attributes}
       className={cn(
-        'bg-white border border-gray-100 rounded-xl p-3 cursor-grab active:cursor-grabbing hover:border-gray-300 hover:shadow-sm transition-all group touch-none',
+        'bg-white border rounded-xl p-3 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all group touch-none',
+        active ? 'border-indigo-300 ring-2 ring-indigo-200 bg-indigo-50/40' : 'border-gray-100 hover:border-gray-300',
         isDragging && 'opacity-40'
       )}
     >
@@ -505,12 +507,12 @@ function BoardCard({ task, stream, onOpen, onToggle }: {
   )
 }
 
-function OverviewTaskRow({ task, onToggle, onOpen }: { task: Task; onToggle: () => void; onOpen: () => void }) {
+function OverviewTaskRow({ task, active, onToggle, onOpen }: { task: Task; active?: boolean; onToggle: () => void; onOpen: () => void }) {
   const priority = PRIORITY_CONFIG[task.priority]
   const overdue = isOverdue(task.due_date, task.status)
   const conf = STATUS_CONFIG[task.status]
   return (
-    <div className={cn('flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors group', task.status === 'done' && 'opacity-60')}>
+    <div className={cn('flex items-center gap-3 px-4 py-2.5 transition-colors group rounded-lg', active ? 'bg-indigo-50 ring-1 ring-indigo-200' : 'hover:bg-gray-50', task.status === 'done' && !active && 'opacity-60')}>
       <button onClick={onToggle} className="flex-shrink-0 text-gray-300 hover:text-green-500 transition-colors">
         {task.status === 'done' ? <CheckCircle2 size={16} className="text-green-500" /> : <Circle size={16} />}
       </button>

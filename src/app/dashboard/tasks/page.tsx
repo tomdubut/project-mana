@@ -304,6 +304,7 @@ export default function TasksPage() {
                   streams={streams}
                   selected={selected.has(task.id)}
                   anySelected={hasSelection}
+                  active={panelTask?.id === task.id}
                   onSelect={() => toggleSelect(task.id)}
                   menuOpen={menuOpen === task.id}
                   onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
@@ -330,6 +331,7 @@ export default function TasksPage() {
                 streams={streams}
                 selected={selected.has(task.id)}
                 anySelected={hasSelection}
+                active={panelTask?.id === task.id}
                 onSelect={() => toggleSelect(task.id)}
                 menuOpen={menuOpen === task.id}
                 onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
@@ -355,8 +357,8 @@ export default function TasksPage() {
   )
 }
 
-function TaskRow({ task, streams, selected, anySelected, onSelect, menuOpen, onMenu, onCloseMenu, onToggle, onOpen, onEdit, onDelete }: {
-  task: Task; streams: WorkStream[]; selected: boolean; anySelected: boolean
+function TaskRow({ task, streams, selected, anySelected, active, onSelect, menuOpen, onMenu, onCloseMenu, onToggle, onOpen, onEdit, onDelete }: {
+  task: Task; streams: WorkStream[]; selected: boolean; anySelected: boolean; active?: boolean
   onSelect: () => void; menuOpen: boolean; onMenu: () => void; onCloseMenu: () => void
   onToggle: () => void; onOpen: () => void; onEdit: () => void; onDelete: () => void
 }) {
@@ -368,9 +370,9 @@ function TaskRow({ task, streams, selected, anySelected, onSelect, menuOpen, onM
   return (
     <div className={cn(
       'group flex items-center gap-3 px-3 py-2.5 bg-white rounded-xl border transition-all',
-      overdue ? 'border-red-100 hover:border-red-200' : 'border-gray-100 hover:border-gray-200',
-      selected && 'border-indigo-200 bg-indigo-50/40',
-      task.status === 'done' && !selected && 'opacity-50'
+      active ? 'border-indigo-300 ring-2 ring-indigo-200 bg-indigo-50/50' : overdue ? 'border-red-100 hover:border-red-200' : 'border-gray-100 hover:border-gray-200',
+      selected && !active && 'border-indigo-200 bg-indigo-50/40',
+      task.status === 'done' && !selected && !active && 'opacity-50'
     )}>
       {/* Checkbox */}
       <button

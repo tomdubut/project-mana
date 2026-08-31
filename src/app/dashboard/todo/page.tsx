@@ -136,6 +136,7 @@ export default function TodoPage() {
               task={task}
               reason={reason}
               streams={streams}
+              active={panelTask?.id === task.id}
               onToggle={() => toggleDone(task)}
               onOpen={() => setPanelTask(task)}
             />
@@ -152,7 +153,7 @@ export default function TodoPage() {
             {allOpen
               .filter((t) => !focusItems.find((f) => f.task.id === t.id))
               .map((task) => (
-                <SmallTaskRow key={task.id} task={task} onToggle={() => toggleDone(task)} onOpen={() => setPanelTask(task)} />
+                <SmallTaskRow key={task.id} task={task} active={panelTask?.id === task.id} onToggle={() => toggleDone(task)} onOpen={() => setPanelTask(task)} />
               ))}
           </div>
         </div>
@@ -170,8 +171,8 @@ export default function TodoPage() {
   )
 }
 
-function FocusCard({ rank, task, reason, streams, onToggle, onOpen }: {
-  rank: number; task: Task; reason: string; streams: WorkStream[]; onToggle: () => void; onOpen: () => void
+function FocusCard({ rank, task, reason, streams, active, onToggle, onOpen }: {
+  rank: number; task: Task; reason: string; streams: WorkStream[]; active?: boolean; onToggle: () => void; onOpen: () => void
 }) {
   const stream = streams.find((s) => s.id === task.stream_id)
   const priority = PRIORITY_CONFIG[task.priority]
@@ -179,8 +180,9 @@ function FocusCard({ rank, task, reason, streams, onToggle, onOpen }: {
 
   return (
     <div onClick={onOpen} className={cn(
-      'bg-white rounded-xl border border-gray-100 p-4 flex gap-4 items-start hover:border-gray-200 transition-all cursor-pointer',
-      task.status === 'done' && 'opacity-50'
+      'bg-white rounded-xl border p-4 flex gap-4 items-start transition-all cursor-pointer',
+      active ? 'border-indigo-300 ring-2 ring-indigo-200 bg-indigo-50/40' : 'border-gray-100 hover:border-gray-200',
+      task.status === 'done' && !active && 'opacity-50'
     )}>
       <div className="flex-shrink-0 flex flex-col items-center gap-1 pt-0.5">
         <span className="text-xs font-bold text-gray-300 w-5 text-center">#{rank}</span>
@@ -230,10 +232,10 @@ function FocusCard({ rank, task, reason, streams, onToggle, onOpen }: {
   )
 }
 
-function SmallTaskRow({ task, onToggle, onOpen }: { task: Task; onToggle: () => void; onOpen: () => void }) {
+function SmallTaskRow({ task, active, onToggle, onOpen }: { task: Task; active?: boolean; onToggle: () => void; onOpen: () => void }) {
   const priority = PRIORITY_CONFIG[task.priority]
   return (
-    <div onClick={onOpen} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white transition-colors group cursor-pointer">
+    <div onClick={onOpen} className={cn('flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group cursor-pointer', active ? 'bg-indigo-50 ring-1 ring-indigo-200' : 'hover:bg-white')}>
       <button onClick={(e) => { e.stopPropagation(); onToggle() }} className="text-gray-300 hover:text-green-500 transition-colors flex-shrink-0">
         <Circle size={16} />
       </button>

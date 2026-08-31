@@ -232,6 +232,7 @@ export default function StreamDetailPage() {
                       <TaskRow
                         key={task.id}
                         task={task}
+                        active={panelTask?.id === task.id}
                         menuOpen={menuOpen === task.id}
                         onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
                         onCloseMenu={() => setMenuOpen(null)}
@@ -372,8 +373,8 @@ function StatCard({ label, value, sub, accent, children }: {
   )
 }
 
-function TaskRow({ task, menuOpen, onMenu, onCloseMenu, onToggle, onOpen, onEdit, onDelete }: {
-  task: Task; menuOpen: boolean; onMenu: () => void; onCloseMenu: () => void;
+function TaskRow({ task, active, menuOpen, onMenu, onCloseMenu, onToggle, onOpen, onEdit, onDelete }: {
+  task: Task; active?: boolean; menuOpen: boolean; onMenu: () => void; onCloseMenu: () => void;
   onToggle: () => void; onOpen: () => void; onEdit: () => void; onDelete: () => void;
 }) {
   const priority = PRIORITY_CONFIG[task.priority]
@@ -381,8 +382,9 @@ function TaskRow({ task, menuOpen, onMenu, onCloseMenu, onToggle, onOpen, onEdit
 
   return (
     <div className={cn(
-      'group flex items-center gap-3 px-4 py-2.5 bg-white rounded-xl border border-gray-100 hover:border-gray-200 transition-all',
-      task.status === 'done' && 'opacity-50'
+      'group flex items-center gap-3 px-4 py-2.5 bg-white rounded-xl border transition-all',
+      active ? 'border-indigo-300 ring-2 ring-indigo-200 bg-indigo-50/50' : 'border-gray-100 hover:border-gray-200',
+      task.status === 'done' && !active && 'opacity-50'
     )}>
       <button onClick={onToggle} className="flex-shrink-0 text-gray-300 hover:text-green-500 transition-colors">
         {task.status === 'done' ? <CheckCircle2 size={17} className="text-green-500" /> : <Circle size={17} />}
