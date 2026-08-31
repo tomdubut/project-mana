@@ -389,30 +389,30 @@ function TaskRow({ task, streams, selected, anySelected, onSelect, menuOpen, onM
         {task.status === 'done' ? <CheckCircle2 size={17} className="text-green-500" /> : <Circle size={17} />}
       </button>
 
-      <button onClick={onOpen} className={cn('flex-1 text-sm text-gray-800 truncate text-left hover:text-indigo-600 transition-colors', task.status === 'done' && 'line-through text-gray-400')}>
+      <button onClick={onOpen} className={cn('flex-1 min-w-0 text-sm text-gray-800 truncate text-left hover:text-indigo-600 transition-colors', task.status === 'done' && 'line-through text-gray-400')}>
         {task.title}
       </button>
-      <div className="flex items-center gap-1.5 flex-shrink-0">
+      <div className="flex items-center gap-1.5 flex-shrink-0 overflow-hidden">
         {task.ai_score !== null && (
-          <span className="hidden sm:flex text-xs text-indigo-400 items-center gap-0.5">
+          <span className="hidden lg:flex text-xs text-indigo-400 items-center gap-0.5">
             <Sparkles size={10} />{task.ai_score}
           </span>
         )}
-        <span className={cn('hidden sm:inline text-xs px-1.5 py-0.5 rounded-full font-medium', status.color)}>{status.label}</span>
-        <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium', priority.color)}>{priority.label}</span>
+        <span className={cn('hidden md:inline text-xs px-1.5 py-0.5 rounded-full font-medium', status.color)}>{status.label}</span>
+        <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0', priority.color)}>{priority.label}</span>
         {stream && (
-          <span className="hidden sm:flex text-xs text-gray-400 items-center gap-1 max-w-[100px]">
+          <span className="hidden lg:flex text-xs text-gray-400 items-center gap-1 max-w-[90px]">
             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: stream.color }} />
             <span className="truncate">{stream.name}</span>
           </span>
         )}
         {task.recurrence && task.recurrence !== 'none' && (
-          <span className="hidden sm:flex text-xs text-indigo-400 items-center gap-0.5" title={`Repeats ${task.recurrence}`}>
+          <span className="hidden md:flex text-xs text-indigo-400 items-center gap-0.5" title={`Repeats ${task.recurrence}`}>
             <RefreshCw size={10} />
           </span>
         )}
         {task.due_date && (
-          <span className={cn('text-xs flex items-center gap-1', overdue ? 'text-red-500 font-medium' : 'text-gray-400')}>
+          <span className={cn('hidden sm:flex text-xs items-center gap-1 flex-shrink-0', overdue ? 'text-red-500 font-medium' : 'text-gray-400')}>
             <Clock size={10} />{formatDate(task.due_date)}
           </span>
         )}
