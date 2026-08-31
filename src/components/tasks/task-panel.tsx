@@ -91,7 +91,7 @@ export function TaskPanel({ task, streams, onClose, onUpdate, onDelete }: TaskPa
     <>
       <div className="fixed inset-0 z-20 bg-black/40 sm:hidden" onClick={onClose} />
 
-      <div className={cn(
+      <div key={task.id} className={cn(
         'fixed right-0 top-0 h-full w-full sm:w-[420px] bg-white border-l border-gray-200 shadow-xl z-30',
         'flex flex-col transition-transform duration-300 ease-in-out',
         task ? 'translate-x-0' : 'translate-x-full'

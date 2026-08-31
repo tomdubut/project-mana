@@ -189,8 +189,8 @@ function FocusCard({ rank, task, reason, streams, onToggle, onOpen }: {
         </button>
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <p className={cn('font-medium text-gray-900 text-sm', task.status === 'done' && 'line-through text-gray-400')}>
+        <div className="flex items-start gap-2">
+          <p className={cn('font-medium text-gray-900 text-sm flex-1 min-w-0 break-words', task.status === 'done' && 'line-through text-gray-400')}>
             {task.title}
           </p>
           {task.ai_score !== null && (
@@ -206,17 +206,17 @@ function FocusCard({ rank, task, reason, streams, onToggle, onOpen }: {
         </div>
         {reason && (
           <p className="text-xs text-indigo-600 mt-1 flex items-start gap-1">
-            <Sparkles size={11} className="mt-0.5 flex-shrink-0" /> {reason}
+            <Sparkles size={11} className="mt-0.5 flex-shrink-0" /> <span className="break-words">{reason}</span>
           </p>
         )}
-        <div className="flex flex-wrap items-center gap-2 mt-2">
-          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', priority.color)}>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2">
+          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0', priority.color)}>
             {priority.label}
           </span>
           {stream && (
-            <span className="text-xs text-gray-500 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stream.color }} />
-              {stream.name}
+            <span className="text-xs text-gray-500 flex items-center gap-1 flex-shrink-0 min-w-0">
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: stream.color }} />
+              <span className="truncate max-w-[120px]">{stream.name}</span>
             </span>
           )}
           {task.due_date && (

@@ -401,9 +401,9 @@ function TaskRow({ task, streams, selected, anySelected, onSelect, menuOpen, onM
         <span className={cn('hidden sm:inline text-xs px-1.5 py-0.5 rounded-full font-medium', status.color)}>{status.label}</span>
         <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium', priority.color)}>{priority.label}</span>
         {stream && (
-          <span className="hidden sm:flex text-xs text-gray-400 items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stream.color }} />
-            {stream.name}
+          <span className="hidden sm:flex text-xs text-gray-400 items-center gap-1 max-w-[100px]">
+            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: stream.color }} />
+            <span className="truncate">{stream.name}</span>
           </span>
         )}
         {task.recurrence && task.recurrence !== 'none' && (
