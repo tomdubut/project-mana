@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react'
 import { Sidebar } from '@/components/layout/sidebar'
 import { WorkspaceProvider } from '@/lib/workspace-context'
 import { CommandPalette } from '@/components/ui/command-palette'
+import { ChatPanel, ChatFAB } from '@/components/chat/chat-panel'
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -26,6 +28,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
+      <ChatFAB onClick={() => setChatOpen((o) => !o)} active={chatOpen} />
     </div>
   )
 }
