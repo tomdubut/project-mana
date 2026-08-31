@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   Plus, Circle, CheckCircle2, Clock, Sparkles,
   MoreHorizontal, Pencil, Trash2, BookOpen, AlertTriangle,
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
+import { Modal } from '@/components/ui/modal'
 import { getStreams, updateStream, deleteStream } from '@/lib/queries/streams'
 import { getTasks, createTask, updateTask, deleteTask } from '@/lib/queries/tasks'
 import { getPages } from '@/lib/queries/knowledge'
@@ -24,6 +25,7 @@ const STATUS_ORDER: TaskStatus[] = ['in_progress', 'todo', 'blocked', 'done']
 export default function StreamDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { activeWorkspace } = useWorkspace()
 
   const [stream, setStream] = useState<WorkStream | null>(null)
@@ -33,8 +35,8 @@ export default function StreamDetailPage() {
   const [quickTitle, setQuickTitle] = useState('')
   const [adding, setAdding] = useState(false)
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
-  const [editing, setEditing] = useState(false)
-  const [editName, setEditName] = useState('')
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editForm, setEditForm] = useState({ name: '', description: '', color: '#6366f1', deadline: '', is_ongoing: true })
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -46,10 +48,16 @@ export default function StreamDetailPage() {
     const found = streams.find((s) => s.id === id)
     if (!found) { router.push('/dashboard/strategy'); return }
     setStream(found)
-    setEditName(found.name)
+    setEditForm({ name: found.name, description: found.description ?? '', color: found.color, deadline: found.deadline ?? '', is_ongoing: found.is_ongoing })
     setTasks(t)
     setPages(p)
     setLoading(false)
+    // Auto-open task panel from ?task= query param
+    const taskId = searchParams.get('task')
+    if (taskId) {
+      const target = t.find((tk) => tk.id === taskId)
+      if (target) setPanelTask(target)
+    }
   }, [id, activeWorkspace?.id, router])
 
   useEffect(() => { load() }, [load])
@@ -97,11 +105,17 @@ export default function StreamDetailPage() {
     load()
   }
 
-  async function handleSaveName(e: React.FormEvent) {
+  async function handleSaveEdit(e: React.FormEvent) {
     e.preventDefault()
-    if (!stream || !editName.trim()) return
-    await updateStream(stream.id, { name: editName.trim() })
-    setEditing(false)
+    if (!stream || !editForm.name.trim()) return
+    await updateStream(stream.id, {
+      name: editForm.name.trim(),
+      description: editForm.description || null,
+      color: editForm.color,
+      deadline: editForm.deadline || null,
+      is_ongoing: editForm.is_ongoing,
+    })
+    setEditModalOpen(false)
     load()
   }
 
@@ -143,24 +157,13 @@ export default function StreamDetailPage() {
           <div className="flex items-start gap-3 min-w-0">
             <span className="w-4 h-4 rounded-full flex-shrink-0 mt-1" style={{ backgroundColor: stream.color }} />
             <div className="min-w-0">
-              {editing ? (
-                <form onSubmit={handleSaveName} className="flex items-center gap-2">
-                  <input
-                    autoFocus
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="text-xl font-bold text-gray-900 border-0 border-b-2 border-indigo-400 focus:outline-none bg-transparent"
-                  />
-                  <button type="submit" className="text-xs px-2.5 py-1 bg-indigo-600 text-white rounded-lg">Save</button>
-                  <button type="button" onClick={() => { setEditing(false); setEditName(stream.name) }} className="text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg">Cancel</button>
-                </form>
-              ) : (
-                <h1 className="text-xl font-bold text-gray-900">{stream.name}</h1>
-              )}
+              <h1 className="text-xl font-bold text-gray-900">{stream.name}</h1>
+              {stream.description && <p className="text-sm text-gray-500 mt-0.5">{stream.description}</p>}
+              {stream.deadline && <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> Deadline: {formatDate(stream.deadline)}</p>}
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={() => setEditing(true)} className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Rename">
+            <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Edit stream">
               <Pencil size={14} />
             </button>
             <button onClick={handleArchiveStream} className="text-gray-400 hover:text-amber-600 p-1.5 rounded-lg hover:bg-amber-50 transition-colors" title="Archive stream">
@@ -288,6 +291,66 @@ export default function StreamDetailPage() {
         onUpdate={async (taskId, updates) => { await updateTask(taskId, updates); setPanelTask((prev) => prev ? { ...prev, ...updates } : null); load() }}
         onDelete={async (taskId) => { await deleteTask(taskId); load(); setPanelTask(null) }}
       />
+
+      {/* Edit stream modal */}
+      <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)} title="Edit stream" size="sm">
+        <form onSubmit={handleSaveEdit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Name</label>
+            <input
+              autoFocus
+              value={editForm.name}
+              onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Description</label>
+            <textarea
+              value={editForm.description}
+              onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+              rows={2}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              placeholder="Optional description"
+            />
+          </div>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-500 mb-1">Deadline</label>
+              <input
+                type="date"
+                value={editForm.deadline}
+                onChange={(e) => setEditForm((f) => ({ ...f, deadline: e.target.value }))}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Color</label>
+              <input
+                type="color"
+                value={editForm.color}
+                onChange={(e) => setEditForm((f) => ({ ...f, color: e.target.value }))}
+                className="h-[38px] w-12 border border-gray-200 rounded-lg px-1 py-1 cursor-pointer"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="is_ongoing"
+              checked={editForm.is_ongoing}
+              onChange={(e) => setEditForm((f) => ({ ...f, is_ongoing: e.target.checked }))}
+              className="rounded"
+            />
+            <label htmlFor="is_ongoing" className="text-sm text-gray-700">Ongoing stream (no fixed end date)</label>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={() => setEditModalOpen(false)} className="text-sm px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button>
+            <button type="submit" className="text-sm px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">Save</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

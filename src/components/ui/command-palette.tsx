@@ -50,7 +50,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
     const [tasks, projects, streams, pages] = await Promise.all([
       (() => {
-        let tq = supabase.from('tasks').select('id,title,status,stream:work_streams(name)')
+        let tq = supabase.from('tasks').select('id,title,status,stream_id,stream:work_streams(id,name)')
           .ilike('title', `%${q}%`).neq('status', 'done').limit(5)
         if (wsId) tq = tq.eq('workspace_id', wsId)
         return tq
@@ -80,7 +80,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       ...(tasks.data ?? []).map((t: any) => ({
         id: t.id, type: 'task' as const,
         title: t.title, subtitle: t.stream?.name,
-        href: `/dashboard/tasks`,
+        href: t.stream_id
+          ? `/dashboard/streams/${t.stream_id}?task=${t.id}`
+          : `/dashboard/tasks?task=${t.id}`,
       })),
       ...(pages.data ?? []).map((p: any) => ({
         id: p.id, type: 'page' as const,

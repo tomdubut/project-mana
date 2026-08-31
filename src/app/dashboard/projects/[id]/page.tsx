@@ -13,6 +13,7 @@ import {
 } from '@dnd-kit/core'
 import Link from 'next/link'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
+import { Modal } from '@/components/ui/modal'
 import { getProjects, updateProject, deleteProject } from '@/lib/queries/goals'
 import { getStreams } from '@/lib/queries/streams'
 import { getTasks, updateTask, deleteTask, createTask } from '@/lib/queries/tasks'
@@ -47,8 +48,8 @@ export default function ProjectDetailPage() {
   const [quickTitle, setQuickTitle] = useState('')
   const [quickStreamId, setQuickStreamId] = useState<string>('')
   const [adding, setAdding] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [editTitle, setEditTitle] = useState('')
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editForm, setEditForm] = useState({ title: '', description: '', target_date: '' })
   const [loading, setLoading] = useState(true)
   const [collapsedStreams, setCollapsedStreams] = useState<Set<string>>(new Set())
   const [draggingTask, setDraggingTask] = useState<Task | null>(null)
@@ -63,7 +64,7 @@ export default function ProjectDetailPage() {
     const found = projects.find((pr) => pr.id === id)
     if (!found) { router.push('/dashboard/strategy'); return }
     setProject(found)
-    setEditTitle(found.title)
+    setEditForm({ title: found.title, description: found.description ?? '', target_date: found.target_date ?? '' })
     const projectStreams = s.filter((st) => st.goal_id === id)
     setStreams(projectStreams)
     const streamIds = new Set(projectStreams.map((st) => st.id))
@@ -124,11 +125,15 @@ export default function ProjectDetailPage() {
     load()
   }
 
-  async function handleSaveTitle(e: React.FormEvent) {
+  async function handleSaveEdit(e: React.FormEvent) {
     e.preventDefault()
-    if (!project || !editTitle.trim()) return
-    await updateProject(project.id, { title: editTitle.trim() })
-    setEditing(false)
+    if (!project || !editForm.title.trim()) return
+    await updateProject(project.id, {
+      title: editForm.title.trim(),
+      description: editForm.description || null,
+      target_date: editForm.target_date || null,
+    })
+    setEditModalOpen(false)
     load()
   }
 
@@ -153,16 +158,7 @@ export default function ProjectDetailPage() {
           <div className="flex items-start gap-3 min-w-0">
             <Target size={18} className="text-indigo-500 flex-shrink-0 mt-1" />
             <div className="min-w-0">
-              {editing ? (
-                <form onSubmit={handleSaveTitle} className="flex items-center gap-2">
-                  <input autoFocus value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-                    className="text-xl font-bold text-gray-900 border-0 border-b-2 border-indigo-400 focus:outline-none bg-transparent" />
-                  <button type="submit" className="text-xs px-2.5 py-1 bg-indigo-600 text-white rounded-lg">Save</button>
-                  <button type="button" onClick={() => { setEditing(false); setEditTitle(project.title) }} className="text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg">Cancel</button>
-                </form>
-              ) : (
-                <h1 className="text-xl font-bold text-gray-900">{project.title}</h1>
-              )}
+              <h1 className="text-xl font-bold text-gray-900">{project.title}</h1>
               {project.description && <p className="text-sm text-gray-500 mt-0.5">{project.description}</p>}
               {project.target_date && (
                 <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
@@ -172,7 +168,7 @@ export default function ProjectDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={() => setEditing(true)} className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Rename"><Pencil size={14} /></button>
+            <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Edit project"><Pencil size={14} /></button>
             <button onClick={async () => { if (!project) return; await updateProject(project.id, { archived: true }); router.push('/dashboard/strategy') }} className="text-gray-400 hover:text-amber-600 p-1.5 rounded-lg hover:bg-amber-50 transition-colors" title="Archive"><Archive size={14} /></button>
             <button onClick={async () => { if (!project || !confirm(`Delete project "${project.title}"?`)) return; await deleteProject(project.id); router.push('/dashboard/strategy') }} className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete"><Trash2 size={14} /></button>
           </div>
@@ -385,6 +381,45 @@ export default function ProjectDetailPage() {
         onUpdate={async (taskId, updates) => { await updateTask(taskId, updates); setPanelTask((prev) => prev ? { ...prev, ...updates } : null); load() }}
         onDelete={async (taskId) => { await deleteTask(taskId); load(); setPanelTask(null) }}
       />
+
+      {/* Edit project modal */}
+      <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)} title="Edit project" size="sm">
+        <form onSubmit={handleSaveEdit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
+            <input
+              autoFocus
+              value={editForm.title}
+              onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Description</label>
+            <textarea
+              value={editForm.description}
+              onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+              rows={2}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              placeholder="Optional description"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Target date</label>
+            <input
+              type="date"
+              value={editForm.target_date}
+              onChange={(e) => setEditForm((f) => ({ ...f, target_date: e.target.value }))}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={() => setEditModalOpen(false)} className="text-sm px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button>
+            <button type="submit" className="text-sm px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">Save</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }
