@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { X, Trash2, Sparkles } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { X, Trash2, Sparkles, RefreshCw } from 'lucide-react'
 import { cn, PRIORITY_CONFIG, STATUS_CONFIG, formatDate } from '@/lib/utils'
 import type { Task, WorkStream, TaskStatus, TaskPriority } from '@/types'
 
@@ -14,23 +14,20 @@ interface TaskPanelProps {
 }
 
 export function TaskPanel({ task, streams, onClose, onUpdate, onDelete }: TaskPanelProps) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState({
-    title: '',
-    description: '',
-    due_date: '',
-    stream_id: '',
-  })
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [streamId, setStreamId] = useState('')
+  const titleRef = useRef<HTMLInputElement>(null)
+  const savedTitle = useRef('')
 
   useEffect(() => {
     if (task) {
-      setDraft({
-        title: task.title,
-        description: task.description ?? '',
-        due_date: task.due_date ?? '',
-        stream_id: task.stream_id ?? '',
-      })
-      setEditing(false)
+      setTitle(task.title)
+      setDescription(task.description ?? '')
+      setDueDate(task.due_date ?? '')
+      setStreamId(task.stream_id ?? '')
+      savedTitle.current = task.title
     }
   }, [task?.id])
 
@@ -38,94 +35,60 @@ export function TaskPanel({ task, streams, onClose, onUpdate, onDelete }: TaskPa
 
   const stream = streams.find((s) => s.id === task.stream_id)
 
-  async function handleSave() {
-    if (!task) return
-    await onUpdate(task.id, {
-      title: draft.title.trim() || task.title,
-      description: draft.description || null,
-      due_date: draft.due_date || null,
-      stream_id: draft.stream_id || null,
-    })
-    setEditing(false)
+  function saveTitle() {
+    const trimmed = title.trim()
+    if (!trimmed) { setTitle(savedTitle.current); return }
+    if (trimmed === savedTitle.current) return
+    savedTitle.current = trimmed
+    onUpdate(task!.id, { title: trimmed })
   }
 
-  function handleCancel() {
-    if (!task) return
-    setDraft({
-      title: task.title,
-      description: task.description ?? '',
-      due_date: task.due_date ?? '',
-      stream_id: task.stream_id ?? '',
-    })
-    setEditing(false)
+  function saveDescription(val: string) {
+    if (val === (task!.description ?? '')) return
+    onUpdate(task!.id, { description: val || null })
+  }
+
+  function saveDueDate(val: string) {
+    if (val === (task!.due_date ?? '')) return
+    onUpdate(task!.id, { due_date: val || null })
+  }
+
+  function saveStream(val: string) {
+    if (val === (task!.stream_id ?? '')) return
+    onUpdate(task!.id, { stream_id: val || null })
   }
 
   return (
     <>
       {/* Mobile overlay */}
-      <div
-        className="fixed inset-0 z-20 bg-black/40 sm:hidden"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-20 bg-black/40 sm:hidden" onClick={onClose} />
 
       {/* Panel */}
-      <div
-        className={cn(
-          'fixed right-0 top-0 h-full w-full sm:w-[420px] bg-white border-l border-gray-200 shadow-xl z-30',
-          'flex flex-col transition-transform duration-300 ease-in-out',
-          task ? 'translate-x-0' : 'translate-x-full'
-        )}
-      >
-        {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-          <div className="flex-1 min-w-0">
-            {editing ? (
-              <input
-                value={draft.title}
-                onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-                className="w-full text-base font-semibold text-gray-900 border-0 border-b border-indigo-300 focus:outline-none focus:border-indigo-500 bg-transparent py-0.5"
-                autoFocus
-              />
-            ) : (
-              <h2 className="text-base font-semibold text-gray-900 truncate">{task.title}</h2>
-            )}
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {editing ? (
-              <>
-                <button
-                  onClick={handleSave}
-                  className="text-xs px-2.5 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={handleCancel}
-                  className="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => setEditing(true)}
-                className="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-              >
-                Edit
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-            >
-              <X size={18} />
-            </button>
-          </div>
+      <div className={cn(
+        'fixed right-0 top-0 h-full w-full sm:w-[420px] bg-white border-l border-gray-200 shadow-xl z-30',
+        'flex flex-col transition-transform duration-300 ease-in-out',
+        task ? 'translate-x-0' : 'translate-x-full'
+      )}>
+        {/* Header — editable title */}
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+          <input
+            ref={titleRef}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={saveTitle}
+            onKeyDown={(e) => { if (e.key === 'Enter') titleRef.current?.blur() }}
+            className="flex-1 min-w-0 text-base font-semibold text-gray-900 bg-transparent border-0 focus:outline-none focus:border-b-2 focus:border-indigo-400 py-0.5 truncate"
+            placeholder="Task title"
+          />
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1 flex-shrink-0">
+            <X size={18} />
+          </button>
         </div>
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
-          {/* Status row */}
+
+          {/* Status */}
           <div>
             <p className="text-xs font-medium text-gray-500 mb-2">Status</p>
             <div className="flex flex-wrap gap-1.5">
@@ -150,7 +113,7 @@ export function TaskPanel({ task, streams, onClose, onUpdate, onDelete }: TaskPa
             </div>
           </div>
 
-          {/* Priority row */}
+          {/* Priority */}
           <div>
             <p className="text-xs font-medium text-gray-500 mb-2">Priority</p>
             <div className="flex flex-wrap gap-1.5">
@@ -182,58 +145,58 @@ export function TaskPanel({ task, streams, onClose, onUpdate, onDelete }: TaskPa
             {/* Due date */}
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-400 w-20 flex-shrink-0">Due date</span>
-              {editing ? (
-                <input
-                  type="date"
-                  value={draft.due_date}
-                  onChange={(e) => setDraft({ ...draft, due_date: e.target.value })}
-                  className="text-sm text-gray-800 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              ) : (
-                <span className="text-sm text-gray-700">{formatDate(task.due_date) ?? <span className="text-gray-400 italic">None</span>}</span>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                onBlur={(e) => saveDueDate(e.target.value)}
+                className="text-sm text-gray-800 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              {dueDate && (
+                <button
+                  onClick={() => { setDueDate(''); saveDueDate('') }}
+                  className="text-xs text-gray-300 hover:text-gray-500"
+                >
+                  <X size={12} />
+                </button>
               )}
             </div>
 
             {/* Stream */}
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-400 w-20 flex-shrink-0">Stream</span>
-              {editing ? (
-                <select
-                  value={draft.stream_id}
-                  onChange={(e) => setDraft({ ...draft, stream_id: e.target.value })}
-                  className="text-sm text-gray-800 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                  <option value="">No stream</option>
-                  {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              ) : stream ? (
-                <span className="text-sm text-gray-700 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: stream.color }} />
-                  {stream.name}
-                </span>
-              ) : (
-                <span className="text-sm text-gray-400 italic">None</span>
-              )}
+              <select
+                value={streamId}
+                onChange={(e) => { setStreamId(e.target.value); saveStream(e.target.value) }}
+                className="text-sm text-gray-800 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                <option value="">No stream</option>
+                {streams.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
             </div>
 
+            {/* Recurrence */}
+            {task.recurrence && task.recurrence !== 'none' && (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400 w-20 flex-shrink-0">Repeat</span>
+                <span className="flex items-center gap-1 text-xs text-indigo-500 font-medium">
+                  <RefreshCw size={11} /> {task.recurrence}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Description */}
           <div>
             <p className="text-xs font-medium text-gray-500 mb-2">Description</p>
-            {editing ? (
-              <textarea
-                value={draft.description}
-                onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-                placeholder="Add a description…"
-                rows={4}
-                className="w-full text-sm text-gray-800 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
-              />
-            ) : task.description ? (
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{task.description}</p>
-            ) : (
-              <p className="text-sm text-gray-400 italic">No description</p>
-            )}
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onBlur={(e) => saveDescription(e.target.value)}
+              placeholder="Add a description…"
+              rows={4}
+              className="w-full text-sm text-gray-800 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none placeholder-gray-300"
+            />
           </div>
 
           {/* AI section */}
@@ -253,7 +216,7 @@ export function TaskPanel({ task, streams, onClose, onUpdate, onDelete }: TaskPa
           )}
         </div>
 
-        {/* Footer: Delete */}
+        {/* Footer */}
         <div className="px-4 py-3 border-t border-gray-100">
           <button
             onClick={() => { onDelete(task.id); onClose() }}
