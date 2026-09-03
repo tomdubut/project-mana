@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   Plus, Circle, CheckCircle2, Clock, Sparkles, AlertTriangle,
   MoreHorizontal, Pencil, Trash2, ChevronDown, ChevronRight, X,
-  CheckSquare, Square, Target, Layers, RefreshCw,
+  CheckSquare, Square, Target, Layers, RefreshCw, ListFilter,
 } from 'lucide-react'
 import { getTasks, createTask, updateTask, deleteTask } from '@/lib/queries/tasks'
 import { getStreams } from '@/lib/queries/streams'
@@ -48,6 +48,7 @@ export default function TasksPage() {
   const [bulkMenu, setBulkMenu] = useState<'status' | 'priority' | null>(null)
   const [bulkWorking, setBulkWorking] = useState(false)
   const [search, setSearch] = useState('')
+  const [showAll, setShowAll] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const { activeWorkspace } = useWorkspace()
@@ -119,9 +120,16 @@ export default function TasksPage() {
     [tasks]
   )
 
+  // When not showing all: hide groups that are 100% done, unless every group is done
+  const visibleGroups = useMemo(() => {
+    if (showAll) return groups
+    const withOpen = groups.filter((g) => g.totalOpen > 0)
+    return withOpen.length > 0 ? withOpen : groups
+  }, [groups, showAll])
+
   const allVisibleIds = useMemo(() => {
     const ids: string[] = []
-    for (const g of groups) {
+    for (const g of visibleGroups) {
       const key = g.id ?? 'unassigned'
       if (collapsed.has(key)) continue
       const open = g.tasks.filter((t) => t.status !== 'done')
@@ -211,7 +219,21 @@ export default function TasksPage() {
 
         <div className="flex items-center justify-between mb-5">
           <h1 className="text-xl font-bold text-gray-900">Tasks</h1>
-          <span className="text-xs text-gray-400">{tasks.filter(t => t.status !== 'done').length} open</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">{tasks.filter(t => t.status !== 'done').length} open</span>
+            <button
+              onClick={() => setShowAll((v) => !v)}
+              className={cn(
+                'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors',
+                showAll
+                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                  : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              )}
+            >
+              <ListFilter size={12} />
+              {showAll ? 'All tasks' : 'Open only'}
+            </button>
+          </div>
         </div>
 
         {/* Quick add + search */}
@@ -306,13 +328,13 @@ export default function TasksPage() {
         )}
 
         {/* Groups */}
-        {groups.length === 0 ? (
+        {visibleGroups.length === 0 ? (
           <div className="text-center py-16 text-gray-400 text-sm">
             {search ? 'No tasks match your search.' : 'No tasks yet. Add one above.'}
           </div>
         ) : (
           <div className="space-y-4">
-            {groups.map((group) => {
+            {visibleGroups.map((group) => {
               const key = group.id ?? 'unassigned'
               const isCollapsed = collapsed.has(key)
               const isDoneShown = showDone.has(key)
@@ -383,8 +405,8 @@ export default function TasksPage() {
                         />
                       ))}
 
-                      {/* Done tasks (collapsible) */}
-                      {doneTasks.length > 0 && (
+                      {/* Done tasks (collapsible) — only shown when showAll is on */}
+                      {showAll && doneTasks.length > 0 && (
                         <>
                           <button
                             onClick={() => toggleShowDone(key)}
