@@ -14,7 +14,7 @@ import {
 import Link from 'next/link'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Modal } from '@/components/ui/modal'
-import { getProjects, updateProject, deleteProject } from '@/lib/queries/goals'
+import { getProjects, updateProject, deleteProject, archiveProject, unarchiveProject } from '@/lib/queries/goals'
 import { getStreams } from '@/lib/queries/streams'
 import { getTasks, updateTask, deleteTask, createTask } from '@/lib/queries/tasks'
 import { getPages } from '@/lib/queries/knowledge'
@@ -169,7 +169,7 @@ export default function ProjectDetailPage() {
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Edit project"><Pencil size={14} /></button>
-            <button onClick={async () => { if (!project) return; await updateProject(project.id, { archived: true }); router.push('/dashboard/strategy') }} className="text-gray-400 hover:text-amber-600 p-1.5 rounded-lg hover:bg-amber-50 transition-colors" title="Archive"><Archive size={14} /></button>
+            <button onClick={async () => { if (!project) return; await (project.archived ? unarchiveProject(project.id) : archiveProject(project.id)); router.push('/dashboard/strategy') }} className="text-gray-400 hover:text-amber-600 p-1.5 rounded-lg hover:bg-amber-50 transition-colors" title={project?.archived ? 'Unarchive' : 'Archive'}><Archive size={14} /></button>
             <button onClick={async () => { if (!project || !confirm(`Delete project "${project.title}"?`)) return; await deleteProject(project.id); router.push('/dashboard/strategy') }} className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete"><Trash2 size={14} /></button>
           </div>
         </div>

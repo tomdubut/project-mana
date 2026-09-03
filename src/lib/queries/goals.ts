@@ -55,3 +55,41 @@ export async function deleteProject(id: string) {
   const { error } = await supabase.from('goals').delete().eq('id', id)
   if (error) throw error
 }
+
+export async function archiveProject(id: string) {
+  const supabase = createClient()
+  // Archive all streams in the project
+  const { data: streams } = await supabase
+    .from('work_streams').select('id').eq('goal_id', id)
+  const streamIds = (streams ?? []).map((s: any) => s.id)
+
+  await Promise.all([
+    supabase.from('goals').update({ archived: true }).eq('id', id),
+    streamIds.length > 0
+      ? supabase.from('work_streams').update({ archived: true }).in('id', streamIds)
+      : Promise.resolve(),
+    streamIds.length > 0
+      ? supabase.from('tasks').update({ archived: true }).in('stream_id', streamIds)
+      : Promise.resolve(),
+    // Also archive tasks directly on the project (no stream)
+    supabase.from('tasks').update({ archived: true }).eq('goal_id', id).is('stream_id', null),
+  ])
+}
+
+export async function unarchiveProject(id: string) {
+  const supabase = createClient()
+  const { data: streams } = await supabase
+    .from('work_streams').select('id').eq('goal_id', id)
+  const streamIds = (streams ?? []).map((s: any) => s.id)
+
+  await Promise.all([
+    supabase.from('goals').update({ archived: false }).eq('id', id),
+    streamIds.length > 0
+      ? supabase.from('work_streams').update({ archived: false }).in('id', streamIds)
+      : Promise.resolve(),
+    streamIds.length > 0
+      ? supabase.from('tasks').update({ archived: false }).in('stream_id', streamIds)
+      : Promise.resolve(),
+    supabase.from('tasks').update({ archived: false }).eq('goal_id', id).is('stream_id', null),
+  ])
+}

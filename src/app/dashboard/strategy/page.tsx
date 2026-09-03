@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { Plus, Target, Layers, MoreHorizontal, Pencil, Trash2, Calendar, ExternalLink, ChevronDown, ChevronRight, Archive, ArchiveRestore } from 'lucide-react'
-import { getProjects, createProject, updateProject, deleteProject } from '@/lib/queries/goals'
+import { getProjects, createProject, updateProject, deleteProject, archiveProject, unarchiveProject } from '@/lib/queries/goals'
 import { getStreams, createStream, updateStream, deleteStream } from '@/lib/queries/streams'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -140,11 +140,7 @@ export default function StrategyPage() {
                     onClose={() => setMenuOpen(null)}
                     onEdit={() => { setEditProject(project); setMenuOpen(null) }}
                     onArchive={async () => {
-                      const goalStreams = streams.filter((s) => s.goal_id === project.id)
-                      await Promise.all([
-                        updateProject(project.id, { archived: true }),
-                        ...goalStreams.map((s) => updateStream(s.id, { archived: true })),
-                      ])
+                      await archiveProject(project.id)
                       setMenuOpen(null)
                       load()
                     }}
@@ -277,7 +273,7 @@ export default function StrategyPage() {
                     <span className="text-xs text-gray-400 flex-shrink-0">{formatDate(project.target_date)}</span>
                   )}
                   <button
-                    onClick={async () => { await updateProject(project.id, { archived: false }); load() }}
+                    onClick={async () => { await unarchiveProject(project.id); load() }}
                     className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors flex-shrink-0"
                     title="Unarchive"
                   >
