@@ -12,7 +12,7 @@ export async function getTasks(filters?: {
   workspaceId?: string
 }) {
   const supabase = createClient()
-  let q = supabase.from('tasks').select(SELECT).order('created_at', { ascending: false })
+  let q = supabase.from('tasks').select(SELECT).eq('archived', false).order('created_at', { ascending: false })
   if (filters?.streamId !== undefined) q = q.eq('stream_id', filters.streamId)
   if (filters?.goalId)     q = q.eq('goal_id', filters.goalId)
   if (filters?.status)     q = q.eq('status', filters.status)
