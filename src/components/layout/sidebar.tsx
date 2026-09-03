@@ -268,8 +268,8 @@ export function Sidebar({ onSearch }: { onSearch?: () => void }) {
                       <Target size={13} className={cn('flex-shrink-0', isActiveProject ? 'text-indigo-500' : 'text-gray-400')} />
                       <span className="truncate">{project.title}</span>
                     </Link>
-                    {project.task_count !== undefined && project.task_count > 0 && (
-                      <span className="text-xs text-gray-400 flex-shrink-0 pr-2">{project.task_count}</span>
+                    {project.task_count !== undefined && (project.task_count - (project.done_count ?? 0)) > 0 && (
+                      <span className="text-xs text-gray-400 flex-shrink-0 pr-2">{project.task_count - (project.done_count ?? 0)}</span>
                     )}
                   </div>
 
