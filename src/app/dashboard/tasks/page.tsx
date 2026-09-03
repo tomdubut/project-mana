@@ -1,85 +1,154 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
-  Plus, Circle, CheckCircle2, Clock, Sparkles,
-  MoreHorizontal, Pencil, Trash2, Filter, AlertTriangle,
-  CheckSquare, Square, ChevronDown, X, RefreshCw,
+  Plus, Circle, CheckCircle2, Clock, Sparkles, AlertTriangle,
+  MoreHorizontal, Pencil, Trash2, ChevronDown, ChevronRight, X,
+  CheckSquare, Square, Target, Layers, RefreshCw,
 } from 'lucide-react'
 import { getTasks, createTask, updateTask, deleteTask } from '@/lib/queries/tasks'
 import { getStreams } from '@/lib/queries/streams'
+import { getProjects } from '@/lib/queries/goals'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TaskPanel } from '@/components/tasks/task-panel'
 import { cn, PRIORITY_CONFIG, STATUS_CONFIG, formatDate, isOverdue } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
-import type { Task, WorkStream, TaskStatus, TaskPriority } from '@/types'
+import type { Task, WorkStream, Project, TaskStatus, TaskPriority } from '@/types'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 
-const ALL_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'blocked', 'done']
-const ALL_PRIORITIES: TaskPriority[] = ['high', 'normal', 'low']
+const STATUS_ICON: Record<TaskStatus, React.ReactNode> = {
+  todo:        <Circle size={15} className="text-gray-300" />,
+  in_progress: <RefreshCw size={14} className="text-blue-400" />,
+  blocked:     <AlertTriangle size={14} className="text-orange-400" />,
+  done:        <CheckCircle2 size={15} className="text-green-500" />,
+}
+
+interface Group {
+  id: string | null
+  label: string
+  color?: string
+  isProject: boolean
+  tasks: Task[]
+  totalOpen: number
+  totalDone: number
+}
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [streams, setStreams] = useState<WorkStream[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [panelTask, setPanelTask] = useState<Task | null>(null)
   const [quickTitle, setQuickTitle] = useState('')
   const [adding, setAdding] = useState(false)
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
-  const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all')
-  const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all')
-  const [loading, setLoading] = useState(true)
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [showDone, setShowDone] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkMenu, setBulkMenu] = useState<'status' | 'priority' | null>(null)
   const [bulkWorking, setBulkWorking] = useState(false)
+  const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
 
   const { activeWorkspace } = useWorkspace()
 
   const load = useCallback(async () => {
-    const [t, s] = await Promise.all([
+    const [t, s, p] = await Promise.all([
       getTasks({ workspaceId: activeWorkspace?.id }),
       getStreams(false, activeWorkspace?.id),
+      getProjects(activeWorkspace?.id),
     ])
     setTasks(t)
     setStreams(s)
+    setProjects(p)
     setLoading(false)
   }, [activeWorkspace?.id])
 
   useEffect(() => { load() }, [load])
 
-  const overdueTasks = tasks.filter((t) => isOverdue(t.due_date, t.status))
-  const overdueIds = new Set(overdueTasks.map((t) => t.id))
+  // Build groups: one per project, plus "Unassigned" at end
+  const groups = useMemo<Group[]>(() => {
+    const q = search.trim().toLowerCase()
+    const allTasks = q
+      ? tasks.filter((t) => t.title.toLowerCase().includes(q))
+      : tasks
 
-  const filtered = tasks.filter((t) => {
-    if (overdueIds.has(t.id)) return false
-    if (filterStatus !== 'all' && t.status !== filterStatus) return false
-    if (filterPriority !== 'all' && t.priority !== filterPriority) return false
-    return true
-  })
+    const streamMap = Object.fromEntries(streams.map((s) => [s.id, s]))
 
-  const visibleIds = [...overdueTasks, ...filtered].map((t) => t.id)
-  const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id))
+    // Map task → project id
+    const taskProject = (t: Task): string | null => {
+      if (t.goal_id) return t.goal_id
+      if (t.stream_id && streamMap[t.stream_id]?.goal_id) return streamMap[t.stream_id].goal_id
+      return null
+    }
+
+    const result: Group[] = projects.map((p) => {
+      const ptasks = allTasks.filter((t) => taskProject(t) === p.id)
+      return {
+        id: p.id,
+        label: p.title,
+        isProject: true,
+        tasks: ptasks,
+        totalOpen: ptasks.filter((t) => t.status !== 'done').length,
+        totalDone: ptasks.filter((t) => t.status === 'done').length,
+      }
+    }).filter((g) => g.tasks.length > 0)
+
+    const assignedIds = new Set(projects.map((p) => p.id))
+    const unassigned = allTasks.filter((t) => {
+      const pid = taskProject(t)
+      return !pid || !assignedIds.has(pid)
+    })
+
+    if (unassigned.length > 0) {
+      result.push({
+        id: null,
+        label: 'Unassigned',
+        isProject: false,
+        tasks: unassigned,
+        totalOpen: unassigned.filter((t) => t.status !== 'done').length,
+        totalDone: unassigned.filter((t) => t.status === 'done').length,
+      })
+    }
+
+    return result
+  }, [tasks, streams, projects, search])
+
+  const overdueTasks = useMemo(() =>
+    tasks.filter((t) => isOverdue(t.due_date, t.status) && t.status !== 'done'),
+    [tasks]
+  )
+
+  const allVisibleIds = useMemo(() => {
+    const ids: string[] = []
+    for (const g of groups) {
+      const key = g.id ?? 'unassigned'
+      if (collapsed.has(key)) continue
+      const open = g.tasks.filter((t) => t.status !== 'done')
+      ids.push(...open.map((t) => t.id))
+      if (showDone.has(key)) {
+        ids.push(...g.tasks.filter((t) => t.status === 'done').map((t) => t.id))
+      }
+    }
+    return ids
+  }, [groups, collapsed, showDone])
+
+  const allSelected = allVisibleIds.length > 0 && allVisibleIds.every((id) => selected.has(id))
+  const hasSelection = selected.size > 0
 
   function toggleSelect(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
-
   function toggleAll() {
-    if (allSelected) {
-      setSelected(new Set())
-    } else {
-      setSelected(new Set(visibleIds))
-    }
+    setSelected(allSelected ? new Set() : new Set(allVisibleIds))
   }
+  function clearSelection() { setSelected(new Set()); setBulkMenu(null) }
 
-  function clearSelection() {
-    setSelected(new Set())
-    setBulkMenu(null)
+  function toggleCollapse(key: string) {
+    setCollapsed((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
+  }
+  function toggleShowDone(key: string) {
+    setShowDone((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
   }
 
   async function bulkUpdate(updates: Partial<Task>) {
@@ -105,15 +174,9 @@ export default function TasksPage() {
     setAdding(true)
     await createTask({
       title: quickTitle.trim(),
-      description: null,
-      status: 'todo',
-      priority: 'normal',
-      stream_id: null,
-      goal_id: null,
-      due_date: null,
-      ai_score: null,
-      ai_reason: null,
-      recurrence: 'none',
+      description: null, status: 'todo', priority: 'normal',
+      stream_id: null, goal_id: null, due_date: null,
+      ai_score: null, ai_reason: null, recurrence: 'none',
       workspace_id: activeWorkspace?.id ?? null,
     })
     setQuickTitle('')
@@ -138,8 +201,6 @@ export default function TasksPage() {
     </div>
   )
 
-  const hasSelection = selected.size > 0
-
   return (
     <div className={cn('transition-all duration-300 ease-in-out', panelTask ? 'sm:mr-[420px]' : '')}>
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
@@ -147,60 +208,42 @@ export default function TasksPage() {
           { label: activeWorkspace?.name ?? 'Workspace', color: activeWorkspace?.color },
           { label: 'Tasks' },
         ]} />
-        <div className="flex items-center justify-between mb-6">
+
+        <div className="flex items-center justify-between mb-5">
           <h1 className="text-xl font-bold text-gray-900">Tasks</h1>
+          <span className="text-xs text-gray-400">{tasks.filter(t => t.status !== 'done').length} open</span>
         </div>
 
-        {/* Quick add */}
-        <form onSubmit={handleQuickAdd} className="flex gap-2 mb-6">
+        {/* Quick add + search */}
+        <div className="flex gap-2 mb-5">
           <Input
-            value={quickTitle}
-            onChange={(e) => setQuickTitle(e.target.value)}
-            placeholder="Add a task…"
-            className="flex-1"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search tasks…"
+            className="w-36 sm:w-48"
           />
-          <Button type="submit" disabled={adding || !quickTitle.trim()} size="sm">
-            <Plus size={15} /> Add
-          </Button>
-        </form>
-
-        {/* Filters */}
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <Filter size={13} className="text-gray-400" />
-          <div className="flex gap-1 flex-wrap">
-            {(['all', ...ALL_STATUSES] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setFilterStatus(s)}
-                className={cn(
-                  'text-xs px-2.5 py-1 rounded-full font-medium transition-all border',
-                  filterStatus === s
-                    ? s === 'all' ? 'bg-gray-800 text-white border-gray-800' : cn(STATUS_CONFIG[s].color, 'border-current')
-                    : 'bg-gray-100 text-gray-500 border-transparent hover:bg-gray-200'
-                )}
-              >
-                {s === 'all' ? 'All' : STATUS_CONFIG[s].label}
-              </button>
-            ))}
-          </div>
-          <div className="w-px h-4 bg-gray-200" />
-          <div className="flex gap-1 flex-wrap">
-            {(['all', ...ALL_PRIORITIES] as const).map((p) => (
-              <button
-                key={p}
-                onClick={() => setFilterPriority(p)}
-                className={cn(
-                  'text-xs px-2.5 py-1 rounded-full font-medium transition-all border',
-                  filterPriority === p
-                    ? p === 'all' ? 'bg-gray-800 text-white border-gray-800' : cn(PRIORITY_CONFIG[p].color, 'border-current')
-                    : 'bg-gray-100 text-gray-500 border-transparent hover:bg-gray-200'
-                )}
-              >
-                {p === 'all' ? 'All' : PRIORITY_CONFIG[p].label}
-              </button>
-            ))}
-          </div>
+          <form onSubmit={handleQuickAdd} className="flex gap-2 flex-1">
+            <Input
+              value={quickTitle}
+              onChange={(e) => setQuickTitle(e.target.value)}
+              placeholder="Add a task…"
+              className="flex-1"
+            />
+            <Button type="submit" disabled={adding || !quickTitle.trim()} size="sm">
+              <Plus size={15} /> Add
+            </Button>
+          </form>
         </div>
+
+        {/* Overdue banner */}
+        {overdueTasks.length > 0 && (
+          <div className="flex items-center gap-2 mb-5 px-4 py-2.5 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
+            <AlertTriangle size={14} className="flex-shrink-0" />
+            <span className="font-medium">{overdueTasks.length} overdue task{overdueTasks.length !== 1 ? 's' : ''}</span>
+            <span className="text-red-400">·</span>
+            <span className="text-red-500 text-xs truncate">{overdueTasks.slice(0, 3).map(t => t.title).join(', ')}{overdueTasks.length > 3 ? '…' : ''}</span>
+          </div>
+        )}
 
         {/* Bulk action bar */}
         {hasSelection && (
@@ -210,34 +253,22 @@ export default function TasksPage() {
             </button>
             <span className="text-xs font-semibold text-indigo-700">{selected.size} selected</span>
             <div className="flex-1" />
-
-            <button
-              onClick={() => bulkUpdate({ status: 'done' })}
-              disabled={bulkWorking}
-              className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-            >
+            <button onClick={() => bulkUpdate({ status: 'done' })} disabled={bulkWorking}
+              className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50">
               <CheckCircle2 size={12} /> Mark done
             </button>
-
-            {/* Status dropdown */}
             <div className="relative">
-              <button
-                onClick={() => setBulkMenu(bulkMenu === 'status' ? null : 'status')}
-                disabled={bulkWorking}
-                className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-white border border-indigo-200 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50"
-              >
+              <button onClick={() => setBulkMenu(bulkMenu === 'status' ? null : 'status')} disabled={bulkWorking}
+                className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-white border border-indigo-200 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50">
                 Status <ChevronDown size={11} />
               </button>
               {bulkMenu === 'status' && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setBulkMenu(null)} />
                   <div className="absolute left-0 top-8 z-20 bg-white border border-gray-100 shadow-lg rounded-lg py-1 w-36">
-                    {ALL_STATUSES.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => { setBulkMenu(null); bulkUpdate({ status: s }) }}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
-                      >
+                    {(['todo','in_progress','blocked','done'] as TaskStatus[]).map((s) => (
+                      <button key={s} onClick={() => { setBulkMenu(null); bulkUpdate({ status: s }) }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50">
                         <span className={cn('px-1.5 py-0.5 rounded-full font-medium', STATUS_CONFIG[s].color)}>{STATUS_CONFIG[s].label}</span>
                       </button>
                     ))}
@@ -245,26 +276,18 @@ export default function TasksPage() {
                 </>
               )}
             </div>
-
-            {/* Priority dropdown */}
             <div className="relative">
-              <button
-                onClick={() => setBulkMenu(bulkMenu === 'priority' ? null : 'priority')}
-                disabled={bulkWorking}
-                className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-white border border-indigo-200 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50"
-              >
+              <button onClick={() => setBulkMenu(bulkMenu === 'priority' ? null : 'priority')} disabled={bulkWorking}
+                className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-white border border-indigo-200 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50">
                 Priority <ChevronDown size={11} />
               </button>
               {bulkMenu === 'priority' && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setBulkMenu(null)} />
                   <div className="absolute left-0 top-8 z-20 bg-white border border-gray-100 shadow-lg rounded-lg py-1 w-32">
-                    {(['urgent', ...ALL_PRIORITIES] as TaskPriority[]).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => { setBulkMenu(null); bulkUpdate({ priority: p }) }}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
-                      >
+                    {(['urgent','high','normal','low'] as TaskPriority[]).map((p) => (
+                      <button key={p} onClick={() => { setBulkMenu(null); bulkUpdate({ priority: p }) }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50">
                         <span className={cn('px-1.5 py-0.5 rounded font-medium', PRIORITY_CONFIG[p].color)}>{PRIORITY_CONFIG[p].label}</span>
                       </button>
                     ))}
@@ -272,78 +295,131 @@ export default function TasksPage() {
                 </>
               )}
             </div>
-
-            <button
-              onClick={bulkDelete}
-              disabled={bulkWorking}
-              className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
-            >
+            <button onClick={bulkDelete} disabled={bulkWorking}
+              className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50">
               <Trash2 size={12} /> Delete
             </button>
-
             <button onClick={clearSelection} className="text-indigo-400 hover:text-indigo-600 transition-colors ml-1">
               <X size={15} />
             </button>
           </div>
         )}
 
-        {/* Overdue section */}
-        {overdueTasks.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle size={13} className="text-red-500" />
-              <p className="text-xs font-semibold text-red-600 uppercase tracking-wider">
-                Overdue — {overdueTasks.length} task{overdueTasks.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              {overdueTasks.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  streams={streams}
-                  selected={selected.has(task.id)}
-                  anySelected={hasSelection}
-                  active={panelTask?.id === task.id}
-                  onSelect={() => toggleSelect(task.id)}
-                  menuOpen={menuOpen === task.id}
-                  onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
-                  onCloseMenu={() => setMenuOpen(null)}
-                  onToggle={() => handleToggle(task)}
-                  onOpen={() => setPanelTask(task)}
-                  onEdit={() => { setPanelTask(task); setMenuOpen(null) }}
-                  onDelete={() => { handleDelete(task.id); setMenuOpen(null) }}
-                />
-              ))}
-            </div>
+        {/* Groups */}
+        {groups.length === 0 ? (
+          <div className="text-center py-16 text-gray-400 text-sm">
+            {search ? 'No tasks match your search.' : 'No tasks yet. Add one above.'}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {groups.map((group) => {
+              const key = group.id ?? 'unassigned'
+              const isCollapsed = collapsed.has(key)
+              const isDoneShown = showDone.has(key)
+              const openTasks = group.tasks.filter((t) => t.status !== 'done')
+              const doneTasks = group.tasks.filter((t) => t.status === 'done')
+              const total = group.tasks.length
+              const progress = total > 0 ? Math.round((group.totalDone / total) * 100) : 0
+
+              return (
+                <div key={key} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  {/* Group header */}
+                  <button
+                    onClick={() => toggleCollapse(key)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                  >
+                    <span className="text-gray-400 flex-shrink-0">
+                      {isCollapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
+                    </span>
+                    {group.isProject
+                      ? <Target size={14} className="text-indigo-400 flex-shrink-0" />
+                      : <Layers size={14} className="text-gray-300 flex-shrink-0" />
+                    }
+                    <span className="font-semibold text-sm text-gray-800 flex-1 min-w-0 truncate">{group.label}</span>
+
+                    {/* Stats */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {group.totalOpen > 0 && (
+                        <span className="text-xs text-gray-400">{group.totalOpen} open</span>
+                      )}
+                      {group.totalDone > 0 && (
+                        <span className="text-xs text-green-500">{group.totalDone} done</span>
+                      )}
+                    </div>
+
+                    {/* Progress bar */}
+                    {total > 0 && (
+                      <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                        <div
+                          className={cn('h-full rounded-full transition-all', progress === 100 ? 'bg-green-400' : 'bg-indigo-400')}
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Tasks */}
+                  {!isCollapsed && (
+                    <div className="border-t border-gray-50">
+                      {openTasks.length === 0 && doneTasks.length > 0 && (
+                        <p className="text-xs text-gray-400 px-4 py-3 italic">All tasks done 🎉</p>
+                      )}
+                      {openTasks.map((task) => (
+                        <TaskRow
+                          key={task.id}
+                          task={task}
+                          streams={streams}
+                          selected={selected.has(task.id)}
+                          anySelected={hasSelection}
+                          active={panelTask?.id === task.id}
+                          onSelect={() => toggleSelect(task.id)}
+                          menuOpen={menuOpen === task.id}
+                          onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
+                          onCloseMenu={() => setMenuOpen(null)}
+                          onToggle={() => handleToggle(task)}
+                          onOpen={() => setPanelTask(task)}
+                          onEdit={() => { setPanelTask(task); setMenuOpen(null) }}
+                          onDelete={() => { handleDelete(task.id); setMenuOpen(null) }}
+                        />
+                      ))}
+
+                      {/* Done tasks (collapsible) */}
+                      {doneTasks.length > 0 && (
+                        <>
+                          <button
+                            onClick={() => toggleShowDone(key)}
+                            className="w-full flex items-center gap-1.5 px-4 py-2 text-xs text-gray-400 hover:text-gray-600 transition-colors border-t border-gray-50"
+                          >
+                            {isDoneShown ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                            {doneTasks.length} completed task{doneTasks.length !== 1 ? 's' : ''}
+                          </button>
+                          {isDoneShown && doneTasks.map((task) => (
+                            <TaskRow
+                              key={task.id}
+                              task={task}
+                              streams={streams}
+                              selected={selected.has(task.id)}
+                              anySelected={hasSelection}
+                              active={panelTask?.id === task.id}
+                              onSelect={() => toggleSelect(task.id)}
+                              menuOpen={menuOpen === task.id}
+                              onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
+                              onCloseMenu={() => setMenuOpen(null)}
+                              onToggle={() => handleToggle(task)}
+                              onOpen={() => setPanelTask(task)}
+                              onEdit={() => { setPanelTask(task); setMenuOpen(null) }}
+                              onDelete={() => { handleDelete(task.id); setMenuOpen(null) }}
+                            />
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
-
-        {/* Task list */}
-        {filtered.length === 0 && overdueTasks.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 text-sm">No tasks match.</div>
-        ) : filtered.length > 0 ? (
-          <div className="space-y-1.5">
-            {filtered.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                streams={streams}
-                selected={selected.has(task.id)}
-                anySelected={hasSelection}
-                active={panelTask?.id === task.id}
-                onSelect={() => toggleSelect(task.id)}
-                menuOpen={menuOpen === task.id}
-                onMenu={() => setMenuOpen(menuOpen === task.id ? null : task.id)}
-                onCloseMenu={() => setMenuOpen(null)}
-                onToggle={() => handleToggle(task)}
-                onOpen={() => setPanelTask(task)}
-                onEdit={() => { setPanelTask(task); setMenuOpen(null) }}
-                onDelete={() => { handleDelete(task.id); setMenuOpen(null) }}
-              />
-            ))}
-          </div>
-        ) : null}
       </div>
 
       <TaskPanel
@@ -363,76 +439,82 @@ function TaskRow({ task, streams, selected, anySelected, active, onSelect, menuO
   onToggle: () => void; onOpen: () => void; onEdit: () => void; onDelete: () => void
 }) {
   const priority = PRIORITY_CONFIG[task.priority]
-  const status = STATUS_CONFIG[task.status]
   const stream = streams.find((s) => s.id === task.stream_id)
   const overdue = isOverdue(task.due_date, task.status)
+  const isDone = task.status === 'done'
 
   return (
     <div className={cn(
-      'group flex items-center gap-3 px-3 py-2.5 bg-white rounded-xl border transition-all',
-      active ? 'border-indigo-300 ring-2 ring-indigo-200 bg-indigo-50/50' : overdue ? 'border-red-100 hover:border-red-200' : 'border-gray-100 hover:border-gray-200',
-      selected && !active && 'border-indigo-200 bg-indigo-50/40',
-      task.status === 'done' && !selected && !active && 'opacity-50'
+      'group flex items-center gap-2.5 px-4 py-2.5 border-b border-gray-50 last:border-0 transition-all',
+      active ? 'bg-indigo-50 ring-1 ring-inset ring-indigo-200' : 'hover:bg-gray-50/70',
+      selected && !active && 'bg-indigo-50/40',
+      isDone && !active && !selected && 'opacity-50'
     )}>
       {/* Checkbox */}
-      <button
-        onClick={onSelect}
-        className={cn(
-          'flex-shrink-0 transition-all text-gray-300',
-          selected ? 'text-indigo-500' : anySelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-          'hover:text-indigo-400'
-        )}
-      >
-        {selected ? <CheckSquare size={15} /> : <Square size={15} />}
+      <button onClick={onSelect}
+        className={cn('flex-shrink-0 transition-all text-gray-300 hover:text-indigo-400',
+          selected ? 'text-indigo-500 opacity-100' : anySelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        )}>
+        {selected ? <CheckSquare size={14} /> : <Square size={14} />}
       </button>
 
-      {/* Done toggle */}
-      <button onClick={onToggle} className="flex-shrink-0 text-gray-300 hover:text-green-500 transition-colors">
-        {task.status === 'done' ? <CheckCircle2 size={17} className="text-green-500" /> : <Circle size={17} />}
+      {/* Status icon / done toggle */}
+      <button onClick={onToggle} className="flex-shrink-0 hover:scale-110 transition-transform" title={isDone ? 'Mark todo' : 'Mark done'}>
+        {STATUS_ICON[task.status]}
       </button>
 
-      <button onClick={onOpen} className={cn('flex-1 min-w-0 text-sm text-gray-800 truncate text-left hover:text-indigo-600 transition-colors', task.status === 'done' && 'line-through text-gray-400')}>
+      {/* Title */}
+      <button onClick={onOpen}
+        className={cn('flex-1 min-w-0 text-sm text-left truncate hover:text-indigo-600 transition-colors',
+          isDone ? 'line-through text-gray-400' : 'text-gray-800'
+        )}>
         {task.title}
       </button>
+
+      {/* Meta row */}
       <div className="flex items-center gap-1.5 flex-shrink-0 overflow-hidden">
-        {task.ai_score !== null && (
-          <span className="hidden lg:flex text-xs text-indigo-400 items-center gap-0.5">
-            <Sparkles size={10} />{task.ai_score}
-          </span>
-        )}
-        <span className={cn('hidden md:inline text-xs px-1.5 py-0.5 rounded-full font-medium', status.color)}>{status.label}</span>
-        <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0', priority.color)}>{priority.label}</span>
         {stream && (
-          <span className="hidden lg:flex text-xs text-gray-400 items-center gap-1 max-w-[90px]">
+          <span className="hidden sm:flex items-center gap-1 text-xs text-gray-400 max-w-[100px]">
             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: stream.color }} />
             <span className="truncate">{stream.name}</span>
           </span>
         )}
+        {overdue && task.due_date && (
+          <span className="hidden sm:flex items-center gap-0.5 text-xs text-red-500 flex-shrink-0">
+            <Clock size={10} /> {formatDate(task.due_date)}
+          </span>
+        )}
+        {!overdue && task.due_date && (
+          <span className="hidden md:flex items-center gap-0.5 text-xs text-gray-400 flex-shrink-0">
+            <Clock size={10} /> {formatDate(task.due_date)}
+          </span>
+        )}
+        {task.ai_score !== null && (
+          <span className="hidden lg:flex text-xs text-indigo-400 items-center gap-0.5 flex-shrink-0">
+            <Sparkles size={10} />{task.ai_score}
+          </span>
+        )}
         {task.recurrence && task.recurrence !== 'none' && (
-          <span className="hidden md:flex text-xs text-indigo-400 items-center gap-0.5" title={`Repeats ${task.recurrence}`}>
-            <RefreshCw size={10} />
-          </span>
+          <span className="hidden lg:block"><RefreshCw size={10} className="text-gray-300" /></span>
         )}
-        {task.due_date && (
-          <span className={cn('hidden sm:flex text-xs items-center gap-1 flex-shrink-0', overdue ? 'text-red-500 font-medium' : 'text-gray-400')}>
-            <Clock size={10} />{formatDate(task.due_date)}
-          </span>
-        )}
+        <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0', priority.color)}>{priority.label}</span>
+
+        {/* Menu */}
         <div className="relative">
-          <button
-            onClick={onMenu}
-            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-gray-400 hover:text-gray-700 p-1 rounded transition-all"
-          >
-            <MoreHorizontal size={15} />
+          <button onClick={onMenu}
+            className={cn('text-gray-300 hover:text-gray-500 transition-colors p-0.5 flex-shrink-0',
+              menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            )}>
+            <MoreHorizontal size={14} />
           </button>
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={onCloseMenu} />
-              <div className="absolute right-0 top-7 z-20 bg-white border border-gray-100 shadow-lg rounded-lg py-1 w-32">
-                <button onClick={onEdit} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+              <div className="absolute right-0 top-6 z-20 bg-white border border-gray-100 shadow-lg rounded-lg py-1 w-32">
+                <button onClick={onEdit} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50">
                   <Pencil size={12} /> Edit
                 </button>
-                <button onClick={onDelete} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50">
+                <button onClick={onDelete} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-red-600 hover:bg-red-50">
                   <Trash2 size={12} /> Delete
                 </button>
               </div>
